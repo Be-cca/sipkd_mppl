@@ -80,19 +80,26 @@ P.dosen = {
     return ['Pengelolaan', 'Berkas Saya', `
       <div class="grid">
         ${c('Daftar Berkas', `
-          <table>
-            <tr>
-              <th>Berkas</th>
-              <th>Tanggal</th>
-              <th>Status</th>
-            </tr>
-            ${B.map(b => `
+          <div style="overflow-x:auto">
+            <table style="width:100%;table-layout:fixed">
               <tr>
-                <td>${b.f}<small class="note" style="display:block">${b.t}${b.c ? ' · ' + b.c : ''}</small></td>
-                <td style="white-space:nowrap">${b.tg}</td>
-                <td>${bd(b.s, b.s == 'Terverifikasi' ? 'g' : b.s == 'Ditolak' ? 'r' : '')}</td>
-              </tr>`).join('') || '<tr><td colspan="3">Belum ada berkas.</td></tr>'}
-          </table>`)}
+                <th style="width:48%">Berkas</th>
+                <th style="width:24%">Tanggal</th>
+                <th style="width:28%;text-align:right">Status</th>
+              </tr>
+              ${B.map(b => `
+                <tr>
+                  <td style="word-break:break-word">
+                    ${b.f}
+                    <small class="note" style="display:block">${b.t}${b.c ? ' · ' + b.c : ''}</small>
+                  </td>
+                  <td style="font-size:12px">${b.tg}</td>
+                  <td style="text-align:right;white-space:nowrap">
+                    ${bd(b.s, b.s == 'Terverifikasi' ? 'g' : b.s == 'Ditolak' ? 'r' : '')}
+                  </td>
+                </tr>`).join('') || '<tr><td colspan="3">Belum ada berkas.</td></tr>'}
+            </table>
+          </div>`)}
         ${c('Unggah Berkas',
           sl('Jenis berkas', 'jn', J) +
           `<label>Berkas (PDF, maks. 5 MB)</label>
