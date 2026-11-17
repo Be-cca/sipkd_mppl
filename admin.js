@@ -141,7 +141,8 @@ P.admin = {
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
               <div>
                 <b>${b.f}</b>
-                <small>${ds ? ds.n + ' (' + ds.id + ')' : b.d} · ${b.t} · ${b.tg}</small>${b.c ? `<small style="color:var(--r)">Catatan: ${b.c}</small>` : ''}
+                <small>${ds ? ds.n + ' (' + ds.id + ')' : b.d} · ${b.t} · ${b.tg}</small>
+                ${b.c ? `<small style="color:var(--r)">Catatan: ${b.c}</small>` : ''}
               </div>
               ${bd(b.s, b.s == 'Terverifikasi' ? 'g' : b.s == 'Ditolak' ? 'r' : '')}
             </div>
@@ -170,7 +171,7 @@ P.admin = {
                 <b>${x.t}</b>
                 <small>${x.d || ''}${x.j ? ' · Jenis berkas: ' + x.j : ''}</small>
               </div>
-              ${ro ? '' : `<button class="btn d" style="width:auto;min-height:34px;padding:0 12px;font-size:12px;flex:none" onclick="delSy('${k}',${idx})">Hapus</button>`}
+              ${ro ? '' : `<button class="btn d" style="width:auto;min-height:34px;padding:0 12px;font-size:12px;flex:none" onclick="delSy('${k}', ${idx})">Hapus</button>`}
             </div>`).join('') || '<p class="note" style="margin:0">Belum ada persyaratan.</p>')}
         ${ro ? '' : c('Tambah Persyaratan ' + (k == 's' ? 'Serdos' : 'Kenaikan JAD'),
           fi('Nama persyaratan', 'syt', 'Contoh: Sertifikat PEKERTI / AA') +
@@ -237,6 +238,14 @@ P.admin = {
               </tr>
               ${D.ds.map(d => `
                 <tr>
-                  <td><b>${d.n}</b><small class="note" style="display:block">${d.id} ·${d.pr}</small></td>
+                  <td><b>${d.n}</b><small class="note" style="display:block">${d.id} · ${d.pr}</small></td>
                   <td>${d.jab}</td>
-                  <td>${bd(pr(d.id, 's') + '/' + D.sy.s.length, el(d.id
+                  <td>${bd(pr(d.id, 's') + '/' + D.sy.s.length, el(d.id, 's') ? 'g' : '')}</td>
+                  <td>${bd(pr(d.id, 'j') + '/' + D.sy.j.length, el(d.id, 'j') ? 'g' : '')}</td>
+                </tr>`).join('')}
+            </table>
+          </div>
+          <button class="btn" style="margin-top:14px" onclick="window.print()">Cetak / Simpan PDF</button>`)}
+      </div>`];
+  }
+};
