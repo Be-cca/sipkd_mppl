@@ -1,21 +1,242 @@
-/* admin.js: layar Admin BAAD (Beranda, Data Dosen, Persyaratan, Batas, Verifikasi, Registrasi, Laporan, Akun) */
-const act=(id,ok)=>{const b=D.ber.find(x=>x.id==id),ct=$('#ct').value.trim();if(!ok&&!ct)return toast('Catatan wajib diisi jika menolak');b.s=ok?'Terverifikasi':'Ditolak';b.c=ct;N(b.d,ok?'g':'r',ok?'Berkas disetujui':'Berkas ditolak',b.t+(ct?' · '+ct:'')+' · oleh Admin BAAD');L(ok?'g':'r','Admin '+(ok?'menyetujui ':'menolak ')+b.t,dn(b.d));save();S.sel=0;draw();toast(ok?'Berkas disetujui':'Berkas ditolak')};
-const out=id=>{const n=dn(id);D.dos=D.dos.filter(d=>d.id!=id);D.ber=D.ber.filter(b=>b.d!=id);D.rq=D.rq.filter(r=>r.d!=id);L('r','Admin mengeluarkan '+n,'Dikeluarkan dari database');save();cl();draw();toast('Dosen dikeluarkan dari database')};
-const mk=(id,n,p,j,hp)=>{id=id.trim();n=n.trim();if(!id||!n)return toast('NIDN dan nama wajib diisi');if(D.dos.some(d=>d.id==id))return toast('NIDN sudah terdaftar');D.dos.push({id,n,pr:p,jab:j,hp:hp||''});N(id,'g','Akun dibuat','Selamat datang di SIPKD');L('g','Admin mendaftarkan '+n,'Registrasi '+id);save();cl();draw();toast('Dosen tersimpan')};
-const add=()=>modal(`<h3>Tambah Dosen</h3>${fi('NIDN / NUPTK','a1','Nomor unik pendidik')}${fi('Nama lengkap','a2','Nama dan gelar')}${sl('Program studi','a3',PRODI)}${sl('Jabatan','a4',['Asisten Ahli','Lektor','Lektor Kepala'])}${fi('No. HP','a6','08xxxxxxxxxx')}<p class="note">Kata sandi awal sama dengan NIDN/NUPTK.</p><button class="btn" onclick="mk($('#a1').value,$('#a2').value,$('#a3').value,$('#a4').value,$('#a6').value)">Simpan Dosen</button><button class="btn w" onclick="cl()">Batal</button>`);
-const addS=()=>modal(`<h3>Tambah Persyaratan</h3>${fi('Nama persyaratan','s1','Mis. Sertifikat bahasa')}${fi('Jenis berkas yang diminta','s2','Mis. Sertifikat Bahasa')}<button class="btn" style="margin-top:12px" onclick="adS()">Simpan</button><button class="btn w" onclick="cl()">Batal</button>`);
-const adS=()=>{const t=$('#s1').value.trim(),j=$('#s2').value.trim(),k=S.tab.as||'s';if(!t)return toast('Nama persyaratan wajib diisi');D.sy[k].push({t,j:j||t});D.dos.forEach(d=>N(d.id,'y','Persyaratan diperbarui','Admin menambah syarat: '+t));L('y','Admin menambah persyaratan',t);save();cl();draw();toast('Persyaratan ditambahkan')};
-const sd=()=>{const a=$('#ds').value,b=$('#dj').value;if(!a||!b)return toast('Isi kedua tanggal');D.dl={s:a,j:b};D.dos.forEach(d=>N(d.id,'y','Batas unggah diperbarui','Serdos '+fmt(a)+' · JAD '+fmt(b)));L('y','Admin mengatur batas unggah','Serdos '+fmt(a)+' · JAD '+fmt(b));save();draw();toast('Batas waktu disimpan')};
-const filt=()=>{const q=$('#q').value.toLowerCase();document.querySelectorAll('#tb tr').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?'':'none')};
-const detail=id=>{const d=D.dos.find(x=>x.id==id),B=D.ber.filter(b=>b.d==id);modal(`<h3 style="margin-bottom:4px">${d.n}</h3><p class="note" style="margin:0 0 8px">NIDN ${d.id} · ${d.jab} · ${d.pr}${d.hp?' · '+d.hp:''}</p><p>Persyaratan Serdos <b style="float:right">${pr(id,'s')} dari ${D.sy.s.length}</b></p>${bar(pr(id,'s')/D.sy.s.length*100)}${SYs(id,'s').map(x=>li(...x)).join('')}<p style="margin-top:10px"><b>Berkas diunggah (${B.length})</b></p>${B.map(b=>li(b.s=='Terverifikasi'?'g':b.s=='Ditolak'?'r':'y',b.t,b.f+' · '+b.s)).join('')||'<p class="note">Belum ada berkas.</p>'}<div style="margin-top:12px"><button class="btn w d" onclick="out('${id}')">Keluarkan</button><button class="btn w" onclick="cl();L('y','Admin mereset sandi',dn('${id}'));save();toast('Sandi direset ke NIDN')">Reset Sandi Dosen</button><button class="btn w" onclick="cl()">Tutup</button></div>`)};
-const ex=()=>{const t=['Nama,NIDN,Prodi,Jabatan,Serdos,JAD,Kelengkapan %',...D.dos.map(d=>[d.n,d.id,d.pr,d.jab,es(d.id,'s'),es(d.id,'j'),pct(d.id)].map(x=>'"'+x+'"').join(','))].join('\n');modal(`<h3>Ekspor Rekap (CSV)</h3><p class="note">Salin lalu tempel ke Excel atau Google Sheets.</p><textarea id="cv" rows="9" readonly>${t}</textarea><div style="margin-top:12px"><button class="btn" onclick="cp()">Salin</button><button class="btn w" onclick="cl()">Tutup</button></div>`)};
-const cp=()=>{const e=$('#cv');e.select();try{navigator.clipboard.writeText(e.value).then(()=>toast('Disalin'),()=>{document.execCommand('copy');toast('Disalin')})}catch(x){document.execCommand('copy');toast('Disalin')}};
-P.admin={
-beranda:()=>{const W=D.ber.filter(b=>b.s=='Menunggu');return['Admin BAAD · Verifikator','Halo, Admin',stt()+`<div class="grid">${c('Berkas Menunggu Verifikasi',W.slice(0,4).map(b=>li('y',dn(b.d),b.t+' · '+b.tg,`<button class="btn w" onclick="S.sel=${b.id};S.vt='m';S.pg='verif';draw()">Tinjau</button>`)).join('')||'<p class="note" style="margin:0">Semua berkas sudah diverifikasi.</p>')}${c('Aktivitas Terbaru',D.lg.slice(0,4).map(x=>li(...x)).join(''))}</div>`]},
-dosen:()=>['Kelola','Data Dosen',c('',`<div style="display:flex;gap:10px"><input id="q" placeholder="Cari dosen: nama atau NIDN" oninput="filt()"><button class="btn" style="white-space:nowrap" onclick="add()">Tambah Dosen</button></div><table style="margin-top:10px"><tr><th>Nama</th><th>NIDN</th><th>Jabatan</th><th>Serdos</th><th>JAD</th></tr><tbody id="tb">${D.dos.map(d=>`<tr class="cl" onclick="detail('${d.id}')"><td><b>${d.n}</b></td><td>${d.id}</td><td>${d.jab}</td><td>${bd(es(d.id,'s'),kb(es(d.id,'s')))}</td><td>${bd(es(d.id,'j'),kb(es(d.id,'j')))}</td></tr>`).join('')}</tbody></table><p class="note">Klik baris untuk melihat detail dosen.</p>`)],
-syarat:()=>{const k=S.tab.as||'s';return['Kelola','Daftar Persyaratan',tabs([['s','Serdos'],['j','Kenaikan JAD']],'as')+c('',D.sy[k].map(x=>li('',x.t,'Berkas: '+(x.j||'Data dosen'),bd('Aktif','g'))).join('')+`<button class="btn" style="margin-top:12px" onclick="addS()">Tambah Persyaratan</button>`)]},
-batas:()=>['Diatur oleh admin BAAD','Batas Pengumpulan',`<div class="grid">${c('Sertifikasi Dosen '+dlb('s'),fi('Batas unggah dokumen','ds','','date',D.dl.s))}${c('Kenaikan Jabatan Akademik '+dlb('j'),fi('Batas unggah dokumen','dj','','date',D.dl.j))}</div><button class="btn" onclick="sd()">Simpan Batas Waktu</button><p class="note">Setelah batas waktu, dosen tidak dapat mengunggah berkas. Perpanjangan hanya oleh admin.</p>`],
-verif:()=>{const k=S.vt||'m',Q=D.ber.filter(b=>b.s==VT[k][1]),v=Q.find(b=>b.id==S.sel)||Q[0];return['Verifikator BAAD (Sir / Staf)','Verifikasi Berkas',`<div class="tabs">${Object.entries(VT).map(([a,[l,s]])=>`<button class="${k==a?'on':''}" onclick="S.vt='${a}';S.sel=0;draw()">${l} ${D.ber.filter(b=>b.s==s).length}</button>`).join('')}</div><div class="grid">${c('Antrean',Q.map(x=>`<div class="li" style="cursor:pointer;${v&&x.id==v.id?'background:var(--ys);':''}" onclick="S.sel=${x.id};draw()"><div><b>${dn(x.d)}</b><small>${x.t} · ${x.tg}</small></div></div>`).join('')||'<p class="note" style="margin:0">Tidak ada berkas.</p>')}${c('Tinjau Berkas',v?`<p><b>${dn(v.d)}</b><br><small class="note">${v.t} · ${v.f} · ${v.tg}</small></p><label>Pratinjau dokumen</label><div class="drop" style="border-style:solid;border-color:var(--b)">${bar(90)}${bar(70)}${bar(85)}${bar(55)}</div>`+(v.s=='Menunggu'?`<label>Catatan (wajib jika ditolak)</label><textarea id="ct" rows="3" placeholder="Tulis alasan penolakan…"></textarea><div style="margin-top:12px"><button class="btn" onclick="act(${v.id},1)">Setujui</button><button class="btn w d" onclick="act(${v.id},0)">Tolak</button></div>`:`<p style="margin-top:10px">${bd(v.s,v.s=='Ditolak'?'r':'g')} <small class="note">${v.c}</small></p>`):'<p class="note" style="margin:0">Pilih berkas dari antrean.</p>')}</div>`]},
-reg:()=>['Dikelola admin BAAD','Registrasi dan Keluar',`<div class="grid">${c('Registrasi Dosen',fi('NIDN / NUPTK','r1','Nomor unik pendidik')+fi('Nama lengkap','r2','Nama dan gelar')+sl('Program studi','r3',PRODI)+`<button class="btn" style="margin-top:14px" onclick="mk($('#r1').value,$('#r2').value,$('#r3').value,'Asisten Ahli','')">Daftarkan Dosen</button>`)}${c('Pindah Tugas / Keluar',(D.rq.map(r=>li('',dn(r.d),r.a+' · '+r.tg,`<button class="btn w d" onclick="out('${r.d}')">Keluarkan</button>`)).join('')||'<p class="note" style="margin:0">Tidak ada pengajuan.</p>')+'<p class="note">Akun dinonaktifkan dan data dikeluarkan dari database. Tercatat di log admin.</p>')}</div>`],
-lap:rep,
-akun:()=>['Admin BAAD · Verifikator','Akun Saya',`<div class="grid">${akunBox('Sir','Admin BAAD · Verifikator','Aktif')}${c('Keamanan dan Pengguna',[['Reset sandi pengguna','Atur ulang sandi dosen dari Data Dosen'],['Log aktivitas','Lihat di menu Laporan']].map(x=>li('',x[0],x[1])).join(''))}</div><button class="btn w d" onclick="bye()">Keluar dari Akun</button><button class="btn w" onclick="resetD()">Reset Data Demo</button>`]};
+/* admin.js: layar Admin BAAD & WR 1 (Beranda, Verifikasi, Persyaratan, Dosen, Laporan) */
+
+// --- Fungsi Aksi Admin ---
+const verif = (id, status) => {
+  const b = D.ber.find(x => x.id == id);
+  if (!b) return;
+  let ket = '';
+  if (status == 'Ditolak') {
+    ket = prompt('Masukkan alasan penolakan berkas "' + b.f + '":');
+    if (ket === null) return;
+  }
+  b.s = status;
+  b.c = ket;
+  const ds = D.ds.find(x => x.id == b.d);
+  D.nt[b.d] = D.nt[b.d] || [];
+  D.nt[b.d].unshift([
+    status == 'Terverifikasi' ? 'g' : 'r',
+    'Berkas ' + status,
+    b.t + (ket ? ' · Alasan: ' + ket : '')
+  ]);
+  L(status == 'Terverifikasi' ? 'g' : 'r', (ds ? ds.n : b.d) + ' · ' + b.t + ' (' + status + ')', b.f);
+  save();
+  draw();
+  toast('Berkas ' + status.toLowerCase());
+};
+
+const addSy = (k) => {
+  const t = $('#syt').value.trim();
+  const d = $('#syd').value.trim();
+  const j = $('#syj').value.trim();
+  if (!t) return toast('Nama persyaratan wajib diisi');
+  D.sy[k].push({ t, d, j });
+  L('g', 'Menambah persyaratan ' + (k == 's' ? 'Serdos' : 'Kenaikan JAD'), t);
+  save();
+  draw();
+  toast('Persyaratan ditambahkan');
+};
+
+const delSy = (k, idx) => {
+  const item = D.sy[k][idx];
+  if (!item) return;
+  if (!confirm('Hapus persyaratan "' + item.t + '"?')) return;
+  D.sy[k].splice(idx, 1);
+  L('r', 'Menghapus persyaratan ' + (k == 's' ? 'Serdos' : 'Kenaikan JAD'), item.t);
+  save();
+  draw();
+  toast('Persyaratan dihapus');
+};
+
+const svDl = () => {
+  const s = $('#dls').value;
+  const j = $('#dlj').value;
+  if (!s || !j) return toast('Tanggal batas pengumpulan wajib diisi');
+  D.dl.s = new Date(s).getTime();
+  D.dl.j = new Date(j).getTime();
+  L('y', 'Memperbarui batas pengumpulan', 'Serdos & JAD');
+  save();
+  draw();
+  toast('Batas pengumpulan disimpan');
+};
+
+const addDs = () => {
+  const n = $('#dsn').value.trim();
+  const id = $('#dsi').value.trim();
+  const jab = $('#dsj').value;
+  const pr = $('#dsp').value.trim();
+  if (!n || !id || !pr) return toast('Lengkapi nama, NIDN/NUPTK, dan program studi');
+  if (D.ds.some(x => x.id == id)) return toast('NIDN/NUPTK sudah terdaftar');
+  D.ds.push({ id, n, jab, pr, hp: '', pw: id });
+  L('g', 'Mendaftarkan dosen baru', n + ' (' + id + ')');
+  save();
+  draw();
+  toast('Akun dosen berhasil ditambahkan');
+};
+
+const accRq = (id) => {
+  const idx = D.rq.findIndex(r => r.d == id);
+  if (idx < 0) return;
+  const rq = D.rq[idx];
+  const dsIdx = D.ds.findIndex(x => x.id == id);
+  const nama = dsIdx >= 0 ? D.ds[dsIdx].n : id;
+  if (!confirm('Setujui pengajuan "' + rq.a + '" dan keluarkan data ' + nama + ' dari database?')) return;
+  D.rq.splice(idx, 1);
+  if (dsIdx >= 0) D.ds.splice(dsIdx, 1);
+  D.ber = D.ber.filter(b => b.d != id);
+  L('r', 'Menonaktifkan & mengeluarkan data dosen', nama + ' (' + rq.a + ')');
+  save();
+  draw();
+  toast('Akun dinonaktifkan dan data dikeluarkan');
+};
+
+const delDs = (id) => {
+  const idx = D.ds.findIndex(x => x.id == id);
+  if (idx < 0) return;
+  const nama = D.ds[idx].n;
+  if (!confirm('Keluarkan dosen "' + nama + '" secara permanen dari database?')) return;
+  D.ds.splice(idx, 1);
+  D.ber = D.ber.filter(b => b.d != id);
+  D.rq = D.rq.filter(r => r.d != id);
+  L('r', 'Menghapus data dosen dari database', nama);
+  save();
+  draw();
+  toast('Data dosen dikeluarkan');
+};
+
+// --- Layar Admin ---
+P.admin = {
+  beranda: () => {
+    const tot = D.ds.length;
+    const elS = D.ds.filter(d => el(d.id, 's')).length;
+    const elJ = D.ds.filter(d => el(d.id, 'j')).length;
+    const mng = D.ber.filter(b => b.s == 'Menunggu').length;
+    const logs = (D.lg || []).slice(0, 6);
+
+    return ['Dashboard Admin', S.u.n + (S.u.r == 'wr1' ? ' · Monitoring WR 1' : ' · Admin BAAD'), `
+      <div class="grid">
+        ${c('Ringkasan Dosen', `
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+            <div class="li" style="flex-direction:column;align-items:center"><b>${tot}</b><small>Total Dosen</small></div>
+            <div class="li" style="flex-direction:column;align-items:center"><b>${elS}</b><small>Eligible Serdos</small></div>
+            <div class="li" style="flex-direction:column;align-items:center"><b>${elJ}</b><small>Eligible JAD</small></div>
+          </div>`)}
+        ${c('Antrean Verifikasi', `
+          <p class="note" style="margin:0 0 10px">${bd(mng + ' Berkas Menunggu')} · ${D.rq.length} pengajuan pindah/keluar</p>
+          <p class="note" style="margin:0">Batas unggah Serdos ${fmt(D.dl.s)} · JAD ${fmt(D.dl.j)}</p>`)}
+        ${c('Aktivitas Terbaru', logs.length ? logs.map(x => li(...x)).join('') : '<p class="note" style="margin:0">Belum ada aktivitas.</p>')}
+      </div>`];
+  },
+
+  verif: () => {
+    const ro = S.u.r == 'wr1';
+    const f = S.tab.vf || 'Menunggu';
+    const list = D.ber.filter(b => f == 'Semua' ? true : b.s == f).slice().reverse();
+
+    return ['Pemeriksaan Dokumen', 'Verifikasi Berkas',
+      tabs([['Menunggu', 'Menunggu'], ['Terverifikasi', 'Terverifikasi'], ['Ditolak', 'Ditolak'], ['Semua', 'Semua']], 'vf') +
+      c('Daftar Berkas (' + list.length + ')', list.length ? list.map(b => {
+        const ds = D.ds.find(x => x.id == b.d);
+        return `
+          <div class="li" style="flex-direction:column;align-items:stretch;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+              <div>
+                <b>${b.f}</b>
+                <small>${ds ? ds.n + ' (' + ds.id + ')' : b.d} · ${b.t} · ${b.tg}</small>${b.c ? `<small style="color:var(--r)">Catatan: ${b.c}</small>` : ''}
+              </div>
+              ${bd(b.s, b.s == 'Terverifikasi' ? 'g' : b.s == 'Ditolak' ? 'r' : '')}
+            </div>
+            ${ro ? '' : `
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn" style="width:auto;min-height:34px;padding:0 12px;font-size:12px" onclick="verif(${b.id}, 'Terverifikasi')">Setujui</button>
+                <button class="btn d" style="width:auto;min-height:34px;padding:0 12px;font-size:12px" onclick="verif(${b.id}, 'Ditolak')">Tolak</button>
+              </div>`}
+          </div>`;
+      }).join('') : '<p class="note" style="margin:0">Tidak ada berkas pada kategori ini.</p>')
+    ];
+  },
+
+  syarat: () => {
+    const k = S.tab.sy || 's';
+    const ro = S.u.r == 'wr1';
+    const toInputDate = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+    return ['Pengaturan', 'Persyaratan Karier',
+      tabs([['s', 'Serdos'], ['j', 'Kenaikan JAD']], 'sy') +
+      `<div class="grid">
+        ${c('Daftar Persyaratan ' + (k == 's' ? 'Serdos ' : 'Kenaikan JAD ') + bd(D.sy[k].length),
+          D.sy[k].map((x, idx) => `
+            <div class="li">
+              <div style="padding-right:10px">
+                <b>${x.t}</b>
+                <small>${x.d || ''}${x.j ? ' · Jenis berkas: ' + x.j : ''}</small>
+              </div>
+              ${ro ? '' : `<button class="btn d" style="width:auto;min-height:34px;padding:0 12px;font-size:12px;flex:none" onclick="delSy('${k}',${idx})">Hapus</button>`}
+            </div>`).join('') || '<p class="note" style="margin:0">Belum ada persyaratan.</p>')}
+        ${ro ? '' : c('Tambah Persyaratan ' + (k == 's' ? 'Serdos' : 'Kenaikan JAD'),
+          fi('Nama persyaratan', 'syt', 'Contoh: Sertifikat PEKERTI / AA') +
+          fi('Keterangan singkat', 'syd', 'Contoh: Wajib diunggah dalam format PDF') +
+          fi('Jenis berkas unggahan (opsional)', 'syj', 'Contoh: Sertifikat PEKERTI') +
+          `<button class="btn" style="margin-top:14px" onclick="addSy('${k}')">Tambah Persyaratan</button>`
+        )}
+        ${ro ? '' : c('Batas Waktu Pengumpulan (Deadline)',
+          fi('Batas pengumpulan Serdos', 'dls', '', 'date', toInputDate(D.dl.s)) +
+          fi('Batas pengumpulan Kenaikan JAD', 'dlj', '', 'date', toInputDate(D.dl.j)) +
+          `<button class="btn" style="margin-top:14px" onclick="svDl()">Simpan Batas Waktu</button>`
+        )}
+      </div>`
+    ];
+  },
+
+  dosen: () => {
+    const ro = S.u.r == 'wr1';
+    return ['Manajemen Pengguna', 'Data Dosen', `
+      <div class="grid">
+        ${D.rq.length ? c('Pengajuan Pindah Tugas / Keluar ' + bd(D.rq.length, 'r'),
+          D.rq.map(r => {
+            const ds = D.ds.find(x => x.id == r.d);
+            return `
+              <div class="li">
+                <div>
+                  <b>${ds ? ds.n : r.d} (${r.d})</b>
+                  <small>Alasan: ${r.a} · Dikirim ${r.tg}</small>
+                </div>
+                ${ro ? '' : `<button class="btn d" style="width:auto;min-height:34px;padding:0 12px;font-size:12px" onclick="accRq('${r.d}')">Nonaktifkan & Hapus</button>`}
+              </div>`;
+          }).join('')) : ''}
+        ${c('Daftar Dosen Terdaftar (' + D.ds.length + ')',
+          D.ds.map(d => `
+            <div class="li">
+              <div>
+                <b>${d.n}</b>
+                <small>NIDN: ${d.id} · ${d.jab} · ${d.pr}</small>
+                <small>Serdos: ${pr(d.id, 's')}/${D.sy.s.length} · JAD: ${pr(d.id, 'j')}/${D.sy.j.length}</small>
+              </div>
+              ${ro ? '' : `<button class="btn d" style="width:auto;min-height:34px;padding:0 12px;font-size:12px" onclick="delDs('${d.id}')">Keluarkan</button>`}
+            </div>`).join('') || '<p class="note" style="margin:0">Belum ada data dosen.</p>')}
+        ${ro ? '' : c('Registrasi Dosen Baru',
+          fi('Nama lengkap & gelar', 'dsn', 'Contoh: Dr. Budi Santoso, M.Kom.') +
+          fi('NIDN / NUPTK (untuk login)', 'dsi', 'Contoh: 0912088901') +
+          sl('Jabatan akademik', 'dsj', ['Tenaga Pengajar', 'Asisten Ahli', 'Lektor', 'Lektor Kepala', 'Guru Besar']) +
+          fi('Program studi', 'dsp', 'Contoh: Teknik Informatika') +
+          `<button class="btn" style="margin-top:14px" onclick="addDs()">Daftarkan Dosen</button>`
+        )}
+      </div>`];
+  },
+
+  laporan: () => {
+    return ['Rekapitulasi', 'Laporan Kelengkapan', `
+      <div class="grid">
+        ${c('Status Kelengkapan Persyaratan Dosen', `
+          <div style="overflow-x:auto">
+            <table style="width:100%">
+              <tr>
+                <th>Dosen</th>
+                <th>Jabatan</th>
+                <th>Serdos</th>
+                <th>JAD</th>
+              </tr>
+              ${D.ds.map(d => `
+                <tr>
+                  <td><b>${d.n}</b><small class="note" style="display:block">${d.id} ·${d.pr}</small></td>
+                  <td>${d.jab}</td>
+                  <td>${bd(pr(d.id, 's') + '/' + D.sy.s.length, el(d.id
