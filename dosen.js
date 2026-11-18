@@ -1,14 +1,33 @@
-/* dosen.js: layar Dosen (Beranda, Persyaratan, Berkas, Notifikasi, Pindah Tugas, Profil) */
+/* dosen.js: layar Dosen (Beranda, Persyaratan, Berkas dengan pratinjau asli, Notifikasi, Pindah Tugas, Profil) */
 const upl = () => {
   const f = $('#fl').files[0], t = $('#jn').value;
-  if (['s', 'j'].filter(k => D.sy[k].some(x => x.j == t)).every(k => dl(k) < 0)) return toast('Batas unggah sudah lewat. Hubungi admin.');
-  if (!f) return toast('Pilih berkas PDF terlebih dahulu');
-  if (f.size > 5242880) return toast('Ukuran berkas maksimal 5 MB');
+  if (['s', 'j'].filter(k => D.sy[k].some(x => x.j == t)).every(k => dl(k) < 0))
+    return toast('Batas unggah sudah lewat. Hubungi admin.');
+  if (!f) return toast('Pilih berkas terlebih dahulu');
+  if (f.size > 3145728) return toast('Ukuran berkas maksimal 3 MB agar tersinkron ke cloud');
+
   const m = me();
-  D.ber.push({ id: D.nid++, d: m.id, t, f: f.name, tg: fmt(Date.now()), s: 'Menunggu', c: '' });
-  L('y', m.n + ' mengunggah ' + t, f.name);
-  save(); draw();
-  toast('Berkas dikirim untuk diverifikasi');
+  const r = new FileReader();
+  toast('Mengunggah & menyinkronkan berkas…');
+
+  r.onload = () => {
+    D.ber.push({
+      id: D.nid++,
+      d: m.id,
+      t,
+      f: f.name,
+      tg: fmt(Date.now()),
+      s: 'Menunggu',
+      c: '',
+      url: r.result // Simpan data file asli (PDF/Gambar/Dokumen) agar bisa dipratinjau Admin
+    });
+    L('y', m.n + ' mengunggah ' + t, f.name);
+    save();
+    draw(true);
+    toast('Berkas terkirim & langsung muncul di Admin');
+  };
+  r.onerror = () => toast('Gagal membaca file. Coba file lain.');
+  r.readAsDataURL(f);
 };
 
 const pj = () => {
@@ -90,7 +109,7 @@ P.dosen = {
               ${B.map(b => `
                 <tr>
                   <td style="word-break:break-word">
-                    ${b.f}
+                    ${b.url ? `<a href="${b.url}" download="${b.f}" style="color:inherit;text-decoration:underline;font-weight:600">${b.f}</a>` : b.f}
                     <small class="note" style="display:block">${b.t}${b.c ? ' · ' + b.c : ''}</small>
                   </td>
                   <td style="font-size:12px">${b.tg}</td>
@@ -102,11 +121,11 @@ P.dosen = {
           </div>`)}
         ${c('Unggah Berkas',
           sl('Jenis berkas', 'jn', J) +
-          `<label>Berkas (PDF, maks. 5 MB)</label>
+          `<label>Berkas (PDF / JPG / PNG, maks. 3 MB)</label>
            <div class="drop" style="cursor:pointer" onclick="$('#fl').click()">
              <span id="fn">Klik untuk memilih berkas</span>
            </div>
-           <input type="file" id="fl" accept=".pdf,application/pdf" hidden onchange="$('#fn').textContent=this.files[0]?this.files[0].name+' · '+(this.files[0].size/1048576).toFixed(1)+' MB':'Klik untuk memilih berkas'">
+           <input type="file" id="fl" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" hidden onchange="$('#fn').textContent=this.files[0]?this.files[0].name+' · '+(this.files[0].size/1048576).toFixed(2)+' MB':'Klik untuk memilih berkas'">
            <p class="note">Batas unggah ${dlb('s')}</p>
            <button class="btn" onclick="upl()">Kirim untuk Diverifikasi</button>`)}
         ${contact}
