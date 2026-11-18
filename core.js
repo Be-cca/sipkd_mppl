@@ -1,8 +1,26 @@
-/* core.js: komponen tampilan bersama, login, menu drawer mobile, sinkronisasi cloud, dan fungsi draw() */
+/* core.js: sesi login persisten saat refresh, drawer mobile, dan sinkronisasi cloud */
 
 const LOGO = document.querySelector('img').src;
 const $ = s => document.querySelector(s);
-const S = { role: null, lr: 'dosen', pg: null, tab: {}, sel: 0 };
+const SK = 'sipkd_sesi_v1';
+
+// Muat sesi login tersimpan agar tidak keluar saat halaman di-refresh
+let _savedS = {};
+try { _savedS = JSON.parse(localStorage.getItem(SK)) || {}; } catch (e) {}
+const S = {
+  role: _savedS.role || null,
+  lr:   _savedS.lr   || 'dosen',
+  pg:   _savedS.pg   || null,
+  me:   _savedS.me   || null,
+  tab:  {},
+  sel:  0
+};
+
+const saveS = () => {
+  try {
+    localStorage.setItem(SK, JSON.stringify({ role: S.role, lr: S.lr, pg: S.pg, me: S.me }));
+  } catch (e) {}
+};
 
 // --- Ikon SVG ---
 const IC = {
@@ -97,7 +115,7 @@ const bye = () => modal(`
   <h3 style="margin-bottom:8px">Keluar dari akun?</h3>
   <p class="note">Anda akan kembali ke halaman masuk dan perlu memasukkan NIDN atau NUPTK dan kata sandi lagi.</p>
   <div style="margin-top:16px">
-    <button class="btn rd" onclick="cl();S.role=null;draw()">Ya, Keluar</button>
+    <button class="btn rd" onclick="cl();S.role=null;saveS();draw()">Ya, Keluar</button>
     <button class="btn w" onclick="cl()">Batal</button>
   </div>
 `);
@@ -122,6 +140,7 @@ const resetD = () => {
   D = seed();
   save();
   S.role = null;
+  saveS();
   toast('Data demo direset & disinkronkan');
   setLr(S.lr);
 };
@@ -165,8 +184,11 @@ const DEF = {
 
 const setLr = k => {
   S.lr = k;
-  $('#u').value = DEF[k][0];
-  $('#p').value = DEF[k][1];
+  saveS();
+  if (!S.role) {
+    $('#u').value = DEF[k][0];
+    $('#p').value = DEF[k][1];
+  }
   draw();
 };
 
@@ -181,6 +203,7 @@ const lgin = e => {
   }
   S.role = S.lr;
   S.pg = null;
+  saveS();
   draw();
 };
 
@@ -220,7 +243,7 @@ const akunBox = (n, s, b) => c('', `
 // --- Render Utama ---
 const P = {};
 
-function draw() {
+function draw(keepScroll = false) {
   const r = S.role;
   $('#lg').style.display = r ? 'none' : 'grid';
   $('#app').style.display = r ? 'grid' : 'none';
@@ -238,6 +261,7 @@ function draw() {
   const n = NAV[r];
   const u = r == 'dosen' ? [me().n, 'Dosen · ' + me().pr] : U[r];
   if (!n.some(x => x[0] == S.pg)) S.pg = n[0][0];
+  saveS();
 
   const [a, b, h] = P[r][S.pg]();
 
@@ -256,11 +280,11 @@ function draw() {
   `;
 
   $('#bd').innerHTML = h;
-  scrollTo(0, 0);
+  if (!keepScroll) scrollTo(0, 0);
 }
 
-// --- Sinkronisasi Otomatis Antarperangkat ---
+// --- Sinkronisasi Otomatis Real-Time (Setiap 2 Detik Tanpa Mengganggu Modal) ---
 if (typeof pullCloud === 'function') {
   pullCloud();
-  setInterval(pullCloud, 5000);
+  setInterval(pullCloud, 2000);
 }
