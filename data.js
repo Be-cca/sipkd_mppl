@@ -32,4 +32,85 @@ const seed = () => {
     sy: {
       s: [
         { t: 'NIDN aktif' },
-        {
+        { t: 'Pendidikan minimal S2', j: 'Ijazah S2' },
+        { t: 'Jabatan minimal Asisten Ahli', j: 'SK Jabatan' },
+        { t: 'Masa kerja memenuhi syarat', j: 'SK Pengangkatan' },
+        { t: 'Sertifikat pelatihan pembelajaran', j: 'Sertifikat Pelatihan' }
+      ],
+      j: [
+        { t: 'Pendidikan minimal S2', j: 'Ijazah S2' },
+        { t: 'Angka kredit', j: 'PAK' },
+        { t: 'Bukti publikasi jurnal', j: 'Bukti Publikasi Jurnal' }
+      ]
+    },
+    ber: B.map((x, i) => ({
+      id: i + 1,
+      d: x[0],
+      t: x[1],
+      f: x[1].replace(/ /g, '_') + '.pdf',
+      tg: fmt(Date.now() - (i + 1) * 864e5),
+      s: x[2],
+      c: x[3] || '',
+      url: ''
+    })),
+    nid: B.length + 1,
+    nt: { '0412038801': [['r', 'Berkas ditolak', 'Bukti Publikasi Jurnal · unggah ulang · 2 jam lalu']] },
+    lg: [['g', 'Data demo dimuat', 'Sistem siap digunakan · ' + now()]],
+    dl: { s: dstr(40), j: dstr(55) },
+    rq: [{ d: '0415088204', a: 'Pindah tugas ke instansi lain', tg: fmt(Date.now() - 4 * 864e5) }]
+  };
+};
+
+let D;
+try { D = JSON.parse(localStorage.getItem(K)); } catch (e) {}
+D = D || seed();
+
+const normD = r => {
+  if (!r || typeof r !== 'object') return seed();
+  r.dos = Array.isArray(r.dos) ? r.dos : Object.values(r.dos || {});
+  r.ber = Array.isArray(r.ber) ? r.ber : Object.values(r.ber || {});
+  r.rq  = Array.isArray(r.rq)  ? r.rq  : Object.values(r.rq  || {});
+  r.lg  = Array.isArray(r.lg)  ? r.lg  : Object.values(r.lg  || {});
+  r.nt  = r.nt || {};
+  r.sy  = r.sy || { s: [], j: [] };
+  r.sy.s = Array.isArray(r.sy.s) ? r.sy.s : Object.values(r.sy.s || {});
+  r.sy.j = Array.isArray(r.sy.j) ? r.sy.j : Object.values(r.sy.j || {});
+  r.dl  = r.dl || { s: dstr(40), j: dstr(55) };
+  return r;
+};
+
+let _lastStr = JSON.stringify(D);
+const pullCloud = async () => {
+  if (!FB_URL.startsWith('http')) return;
+  try {
+    const res = await fetch(FB_URL.replace(/\/$/, '') + '/sipkd.json');
+    if (!res.ok) return;
+    const remote = await res.json();
+    if (remote) {
+      const clean = normD(remote);
+      const str = JSON.stringify(clean);
+      if (str !== _lastStr) {
+        D = clean;
+        _lastStr = str;
+        try { localStorage.setItem(K, str); } catch (e) {}
+        if (typeof draw === 'function' && typeof S !== 'undefined' && S.role) {
+          if (!document.querySelector('#m.on')) draw(true);
+        }
+      }
+    } else {
+      pushCloud();
+    }
+  } catch (e) {}
+};
+
+const pushCloud = async () => {
+  if (!FB_URL.startsWith('http')) return;
+  try {
+    _lastStr = JSON.stringify(D);
+    await fetch(FB_URL.replace(/\/$/, '') + '/sipkd.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: _lastStr
+    });
+  } catch (e) {}
+};
