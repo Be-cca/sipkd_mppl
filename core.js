@@ -67,12 +67,17 @@ const togNav = open => {
 };
 
 // --- Komponen UI Bersama ---
+const DOT = { g: '✓', y: '…', r: '!' };
 const c = (t, b, x = '') => `<section class="c ${x}">${t ? `<h3>${t}</h3>` : ''}${b}</section>`;
 const bd = (t, k = '') => `<span class="bd ${k}">${t}</span>`;
-const bar = (p, col) => `<div class="bar"><i style="width:${p}\%${col ? ';background:' + col : ''}"></i></div>`;
-const li = (k, t, s, r = '') => `<div class="li"><span class="dot ${k}">${{ g: '✓', y: '…', r: '!' }[k] \vert{}\vert{} '•'}</span><div><b>${t}</b><small>${s}</small></div>${r}</div>`;
+const bar = (p, col) => `<div class="bar"><i style="width:${p}%${col ? ';background:' + col : ''}"></i></div>`;
+const li = (k, t, s, r = '') => `<div class="li"><span class="dot ${k}">${DOT[k] || '•'}</span><div><b>${t}</b><small>${s}</small></div>${r}</div>`;
 const st = a => `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">${a.map(([l, v]) => c('', `<div class="st"><span>${l}</span><b>${v}</b></div>`)).join('')}</div>`;
-const tabs = (a, k) => `<div class="tabs">${a.map(([v, l]) => `<button class="${(S.tab[k] \vert{}\vert{} a[0][0]) == v ? 'on' : ''}" onclick="S.tab['${k}']='${v}';draw()">${l}</button>`).join('')}</div>`; const fd = (l, ph, t = 'text') => `<label>${l}</label><input type="${t}" placeholder="${ph}">`; const sel = (l, a) => `<label>${l}</label><select>${a.map(o => `<option>${o}</option>`).join('')}</select>`; const fi = (l, id, ph, t = 'text', v = '') => `<label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${v}">`; const sl = (l, id, a, v) => `<label>${l}</label><select id="${id}">${a.map(o => `<option${o == v ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
+const tabs = (a, k) => `<div class="tabs">${a.map(([v, l]) => `<button class="${(S.tab[k] || a[0][0]) == v ? 'on' : ''}" onclick="S.tab['${k}']='${v}';draw()">${l}</button>`).join('')}</div>`;
+const fd = (l, ph, t = 'text') => `<label>${l}</label><input type="${t}" placeholder="${ph}">`;
+const sel = (l, a) => `<label>${l}</label><select>${a.map(o => `<option>${o}</option>`).join('')}</select>`;
+const fi = (l, id, ph, t = 'text', v = '') => `<label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${v}">`;
+const sl = (l, id, a, v) => `<label>${l}</label><select id="${id}">${a.map(o => `<option${o == v ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
 
 const toast = m => {
   const t = $('#t');
@@ -194,4 +199,68 @@ const rep = () => {
         const a = D.dos.filter(d => d.pr == n);
         const p = Math.round(a.reduce((s, d) => s + pct(d.id), 0) / a.length);
         return `<p style="margin-top:10px"><b>${n}</b><span style="float:right">${p}%</span></p>${bar(p, p < 65 ? '#C2570C' : '')}`;
-      }).join('') || '<p class="note">Belum ada
+      }).join('') || '<p class="note">Belum ada data.</p>')}
+      ${c('Cetak dan Ekspor', `
+        <p class="note" style="margin:0 0 8px">Rekap eligibilitas dan kelengkapan berkas.</p>
+        <button class="btn" onclick="print()">Cetak / PDF</button>
+        <button class="btn w" onclick="ex()">Ekspor Excel (CSV)</button>
+      `)}
+    </div>
+  `];
+};
+
+const akunBox = (n, s, b) => c('', `
+  <div class="li">
+    <span class="dot g" style="width:54px;height:54px;background:var(--g);color:#fff">${n[0]}</span>
+    <div><b>${n}</b><small>${s}</small></div>
+    ${bd(b, 'g')}
+  </div>
+`);
+
+// --- Render Utama ---
+const P = {};
+
+function draw() {
+  const r = S.role;
+  $('#lg').style.display = r ? 'none' : 'grid';
+  $('#app').style.display = r ? 'grid' : 'none';
+
+  if (!r) {
+    togNav(false);
+    $('#lt').innerHTML = '<div class="tabs">' +
+      [['dosen', 'Dosen'], ['admin', 'Admin BAAD'], ['wr', 'WR 1']]
+        .map(([k, l]) => `<button type="button" class="${S.lr == k ? 'on' : ''}" onclick="setLr('${k}')">${l}</button>`)
+        .join('') +
+      '</div>';
+    return;
+  }
+
+  const n = NAV[r];
+  const u = r == 'dosen' ? [me().n, 'Dosen · ' + me().pr] : U[r];
+  if (!n.some(x => x[0] == S.pg)) S.pg = n[0][0];
+
+  const [a, b, h] = P[r][S.pg]();
+
+  $('#nv').innerHTML = n.map(([k, l, i]) =>
+    `<button class="${k == S.pg ? 'on' : ''}" onclick="S.pg='${k}';togNav(false);draw()">${ic(i)}${l}</button>`
+  ).join('');
+
+  $('#me').innerHTML = `<b>${u[0]}</b><br>${u[1]}`;
+
+  $('#hd').innerHTML = `
+    <div class="hd-l">
+      <button type="button" class="mbtn" aria-label="Buka Menu" onclick="togNav()">${ic('menu')}</button>
+      <div><small>${a}</small><h1>${b}</h1></div>
+    </div>
+    <img src="${LOGO}" alt="Logo">
+  `;
+
+  $('#bd').innerHTML = h;
+  scrollTo(0, 0);
+}
+
+// --- Sinkronisasi Otomatis Antarperangkat ---
+if (typeof pullCloud === 'function') {
+  pullCloud();
+  setInterval(pullCloud, 5000);
+}
