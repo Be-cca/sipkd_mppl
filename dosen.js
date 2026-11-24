@@ -19,7 +19,7 @@ const upl = () => {
       tg: fmt(Date.now()),
       s: 'Menunggu',
       c: '',
-      url: r.result // Simpan data file asli (PDF/Gambar/Dokumen) agar bisa dipratinjau Admin
+      url: r.result
     });
     L('y', m.n + ' mengunggah ' + t, f.name);
     save();
@@ -158,8 +158,7 @@ P.dosen = {
           </div>`).join(''))}
         ${c('Dapat Anda Perbarui',
           fi('Nomor HP', 'hp', '08xxxxxxxxxx', 'text', m.hp) +
-          `<button class="btn" style="margin-top:14px" onclick="sp()">Simpan Perubahan</button>
-           <button class="btn w d" onclick="bye()">Keluar dari Akun</button>`)}
+          `<button class="btn" style="margin-top:14px" onclick="sp()">Simpan Perubahan</button>`)}
       </div>`];
   }
 };
