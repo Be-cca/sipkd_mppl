@@ -91,7 +91,7 @@ const bd = (t, k = '') => `<span class="bd ${k}">${t}</span>`;
 const bar = (p, col) => `<div class="bar"><i style="width:${p}%${col ? ';background:' + col : ''}"></i></div>`;
 const li = (k, t, s, r = '') => `<div class="li"><span class="dot ${k}">${DOT[k] || '•'}</span><div><b>${t}</b><small>${s}</small></div>${r}</div>`;
 const st = a => `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">${a.map(([l, v]) => c('', `<div class="st"><span>${l}</span><b>${v}</b></div>`)).join('')}</div>`;
-const tabs = (a, k) => `<div class="tabs">${a.map(([v, l]) => `<button class="${(S.tab[k] \vert{}\vert{} a[0][0]) == v ? 'on' : ''}" onclick="S.tab['${k}']='${v}';draw()">${l}</button>`).join('')}</div>`;
+const tabs = (a, k) => `<div class="tabs">${a.map(([v, l]) => `<button class="${(S.tab[k] || a[0][0]) == v ? 'on' : ''}" onclick="S.tab['${k}']='${v}';draw()">${l}</button>`).join('')}</div>`;
 const fd = (l, ph, t = 'text') => `<label>${l}</label><input type="${t}" placeholder="${ph}">`;
 const sel = (l, a) => `<label>${l}</label><select>${a.map(o => `<option>${o}</option>`).join('')}</select>`;
 const fi = (l, id, ph, t = 'text', v = '') => `<label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${v}">`;
@@ -111,11 +111,20 @@ const modal = h => {
 };
 const cl = () => $('#m').classList.remove('on');
 
+const doLogout = () => {
+  cl();
+  S.role = null;
+  S.me = null;
+  S.pg = null;
+  saveS();
+  draw();
+};
+
 const bye = () => modal(`
   <h3 style="margin-bottom:8px">Keluar dari akun?</h3>
   <p class="note">Anda akan kembali ke halaman masuk dan perlu memasukkan NIDN atau NUPTK dan kata sandi lagi.</p>
   <div style="margin-top:16px">
-    <button class="btn rd" onclick="cl();S.role=null;S.me=null;S.pg=null;saveS();draw()">Ya, Keluar</button>
+    <button class="btn rd" onclick="doLogout()">Ya, Keluar</button>
     <button class="btn w" onclick="cl()">Batal</button>
   </div>
 `);
@@ -178,7 +187,6 @@ const VT = { m: ['Menunggu', 'Menunggu'], d: ['Disetujui', 'Terverifikasi'], t: 
 const PRODI = ['Teknik Sipil', 'Teknik Informatika', 'Manajemen', 'Pendidikan Guru'];
 
 // --- Autentikasi Otomatis Berdasarkan NIDN / NUPTK ---
-// Daftar kredensial Admin BAAD & WR 1 (bisa ditambah sesuai NIDN/NUPTK masing-masing)
 const AKUN_KHUSUS = [
   { id: 'admin.baad', pass: 'demo1234', role: 'admin' },
   { id: '1985010101', pass: 'admin123', role: 'admin' },
@@ -192,7 +200,7 @@ const lgin = e => {
   const p = $('#p').value;
   if (!u || !p) return toast('Isi NIDN/NUPTK dan kata sandi');
 
-  // 1. Cek apakah NIDN/NUPTK termasuk akun Admin BAAD atau WR 1
+  // 1. Cek akun Admin BAAD atau WR 1
   const khusus = AKUN_KHUSUS.find(a => a.id.toLowerCase() === u.toLowerCase());
   if (khusus) {
     if (khusus.pass !== p) return toast('Kata sandi salah');
@@ -204,10 +212,9 @@ const lgin = e => {
     return;
   }
 
-  // 2. Cek apakah NIDN/NUPTK terdaftar di database Dosen (D.dos)
+  // 2. Cek akun Dosen di database D.dos
   const d = D.dos.find(x => String(x.id).toLowerCase() === u.toLowerCase());
   if (d) {
-    // Jika data dosen punya field sandi (d.pw atau d.p), validasi; jika belum diset, pakai default 'demo1234' atau NIDN-nya sendiri
     const sandiDosen = d.pw || d.p || 'demo1234';
     if (p !== sandiDosen && p !== String(d.id)) {
       return toast('Kata sandi dosen salah');
@@ -220,7 +227,6 @@ const lgin = e => {
     return;
   }
 
-  // 3. Jika tidak ditemukan di mana pun
   toast('NIDN / NUPTK tidak terdaftar');
 };
 
@@ -238,7 +244,7 @@ const rep = () => {
       ${c('Kelengkapan Persyaratan per Prodi', PR.map(n => {
         const a = D.dos.filter(d => d.pr == n);
         const p = Math.round(a.reduce((s, d) => s + pct(d.id), 0) / a.length);
-        return `<p style="margin-top:10px"><b>${n}</b><span style="float:right">${p}\%</span></p>${bar(p, p < 65 ? '#C2570C' : '')}`;
+        return `<p style="margin-top:10px"><b>${n}</b><span style="float:right">${p}%</span></p>${bar(p, p < 65 ? '#C2570C' : '')}`;
       }).join('') || '<p class="note">Belum ada data.</p>')}
       ${c('Cetak dan Ekspor', `
         <p class="note" style="margin:0 0 8px">Rekap eligibilitas dan kelengkapan berkas.</p>
@@ -267,7 +273,6 @@ function draw(keepScroll = false) {
 
   if (!r) {
     togNav(false);
-    // Kosongkan input saat kembali ke halaman login
     if ($('#u') && !$('#u').value) $('#p').value = '';
     return;
   }
@@ -297,7 +302,7 @@ function draw(keepScroll = false) {
   if (!keepScroll) scrollTo(0, 0);
 }
 
-// --- Sinkronisasi Otomatis Real-Time (Setiap 2 Detik Tanpa Mengganggu Modal) ---
+// --- Sinkronisasi Otomatis Real-Time ---
 if (typeof pullCloud === 'function') {
   pullCloud();
   setInterval(pullCloud, 2000);
