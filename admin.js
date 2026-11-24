@@ -364,7 +364,6 @@ P.admin = {
       ${akunBox('Sir', 'Admin BAAD · Verifikator', 'Aktif')}
       ${c('Keamanan dan Pengguna', [['Reset sandi pengguna', 'Atur ulang sandi dosen dari Data Dosen'], ['Log aktivitas', 'Lihat di menu Laporan']].map(x => li('', x[0], x[1])).join(''))}
     </div>
-    <button class="btn w d" onclick="bye()">Keluar dari Akun</button>
     <button class="btn w" onclick="resetD()">Reset Data Demo</button>
   `]
 };
