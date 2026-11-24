@@ -1,69 +1,73 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>SIPKD – Sistem Informasi Pengembangan Karier Dosen</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SIPKD — Sistem Informasi Pengembangan Karier Dosen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="lg">
-    <div class="lgl">
-        <img src="Univ_Katolik_De_La_Salle.jpeg" alt="Logo Unika De La Salle">
-        <h2>UNIVERSITAS KATOLIK DE LA SALLE MANADO</h2>
-        <p>RELIGIO · MORES · CULTURA</p>
-        <p style="margin-top:14px;font-weight:600">Menyiapkan Pengembangan Karier Dosen</p>
+
+  <!-- HALAMAN LOGIN -->
+  <div id="lg">
+    <!-- Panel Kiri: Identitas Universitas -->
+    <div class="lg-l">
+      <div class="lg-logo">
+        <img src="Univ_Katolik_De_La_Salle.jpeg" alt="Logo Unika De La Salle Manado">
+      </div>
+      <h2>UNIKA DE LA SALLE MANADO</h2>
+      <div class="lg-mt">RELIGIO · MORES · CULTURA</div>
+      <p>Menyiapkan Pengembangan Karier Dosen</p>
     </div>
-<div class="lgr">
-    <form onsubmit="lgin(event)">
-    <h1 style="font-size:30px;font-weight:800">SIPKD</h1>
-    <p class="note" style="margin:0 0 14px">Sistem Informasi Pengembangan Karier Dosen</p>
-    <div id="lt"></div>
-<label>NIDN / NUPTK</label>
-<input id="u" placeholder="NIDN / NUPTK / username" autocomplete="off">
-<label>Kata sandi</label>
-    <input id="p" type="password" placeholder="Masukkan kata sandi">
-    <button class="btn" style="width:100%;margin-top:16px">Masuk</button>
-    <p class="note">Mode demo: kolom terisi otomatis sesuai peran. 
-        <span style="text-decoration:underline;cursor:pointer" onclick="resetD()">Reset data demo
-        </span>
-    </p>
-    <p class="note">Akses terbatas untuk civitas Universitas Katolik De La Salle Manado. Akun dosen didaftarkan oleh admin BAAD.
-    </p>
-    </form>
-</div>
-</div>
-    <div id="app" style="display:none">
-        <aside>
-            <div class="brand">
-                <img src="Univ_Katolik_De_La_Salle.jpeg" alt="Logo Unika De La Salle">
-                <div>SIPKD
-                    <small>Universitas Katolik De La Salle Manado
-                    </small>
-                </div>
-            </div>
-            <nav id="nv">
-            </nav>
-            <div id="me">
-            </div>
-        </aside>
-        <main>
-            <div id="hd">
-            </div>
-            <div id="bd">
-            </div>
-        </main>
+
+    <!-- Panel Kanan: Form Masuk (Hanya NIDN/NUPTK & Kata Sandi) -->
+    <div class="lg-r">
+      <div class="lg-box">
+        <h1>SIPKD</h1>
+        <p class="lg-sub">Sistem Informasi Pengembangan Karier Dosen</p>
+
+        <form id="f-login" onsubmit="lgin(event)">
+          <div class="fg">
+            <label for="in-nidn">NIDN / NUPTK</label>
+            <input type="text" id="in-nidn" placeholder="Masukkan NIDN / NUPTK Anda" required autocomplete="off">
+          </div>
+
+          <div class="fg">
+            <label for="in-pass">Kata sandi</label>
+            <input type="password" id="in-pass" placeholder="Masukkan kata sandi" required>
+          </div>
+
+          <button type="submit" class="btn-lg">Masuk</button>
+        </form>
+
+        <p class="lg-note">
+          Akses terbatas untuk civitas Unika De La Salle Manado. Akun dosen didaftarkan oleh admin BAAD.
+        </p>
+      </div>
     </div>
-<div id="m" onclick="if(event.target==this)cl()">
-    <div>
+  </div>
+
+  <!-- KONTAINER UTAMA APLIKASI (BERANDA DOSEN / ADMIN / WR 1) -->
+  <div id="app" class="hide">
+    <aside class="sb" id="sb"></aside>
+    <div class="mn">
+      <header class="tb" id="tb"></header>
+      <main class="ct" id="ct"></main>
     </div>
-</div>
-<div id="t"></div>
-<script src="data.js"></script>
-<script src="core.js"></script>
-<script src="dosen.js"></script>
-<script src="admin.js"></script>
-<script src="wr.js"></script>
-<script>setLr('dosen');</script>
-</body></html>
+  </div>
+
+  <!-- MODAL & TOAST NOTIFIKASI -->
+  <div id="md" class="md hide"></div>
+  <div id="ts" class="ts"></div>
+
+  <!-- SCRIPT APLIKASI -->
+  <script src="data.js"></script>
+  <script src="core.js"></script>
+  <script src="dosen.js"></script>
+  <script src="admin.js"></script>
+  <script src="wr.js"></script>
+</body>
+</html>
