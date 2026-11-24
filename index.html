@@ -13,55 +13,55 @@
 
   <!-- HALAMAN LOGIN -->
   <div id="lg">
-    <!-- Panel Kiri: Identitas Universitas -->
-    <div class="lg-l">
-      <div class="lg-logo">
-        <img src="Univ_Katolik_De_La_Salle.jpeg" alt="Logo Unika De La Salle Manado">
-      </div>
+    <div class="lgl">
+      <img src="Univ_Katolik_De_La_Salle.jpeg" alt="Logo Unika De La Salle Manado">
       <h2>UNIKA DE LA SALLE MANADO</h2>
-      <div class="lg-mt">RELIGIO · MORES · CULTURA</div>
-      <p>Menyiapkan Pengembangan Karier Dosen</p>
+      <small style="letter-spacing:2.5px;font-weight:700">RELIGIO · MORES · CULTURA</small>
+      <p style="margin-top:8px;font-weight:600">Menyiapkan Pengembangan Karier Dosen</p>
     </div>
 
-    <!-- Panel Kanan: Form Masuk (Hanya NIDN/NUPTK & Kata Sandi) -->
-    <div class="lg-r">
-      <div class="lg-box">
-        <h1>SIPKD</h1>
-        <p class="lg-sub">Sistem Informasi Pengembangan Karier Dosen</p>
+    <div class="lgr">
+      <form onsubmit="lgin(event)">
+        <h1 style="font-size:28px;font-weight:800;margin-bottom:4px">SIPKD</h1>
+        <p class="note" style="margin:0 0 22px">Sistem Informasi Pengembangan Karier Dosen</p>
 
-        <form id="f-login" onsubmit="lgin(event)">
-          <div class="fg">
-            <label for="in-nidn">NIDN / NUPTK</label>
-            <input type="text" id="in-nidn" placeholder="Masukkan NIDN / NUPTK Anda" required autocomplete="off">
-          </div>
+        <!-- Tanpa pilihan peran: cukup isi NIDN/NUPTK dan Kata Sandi -->
+        <label for="u">NIDN / NUPTK</label>
+        <input id="u" type="text" placeholder="Masukkan NIDN / NUPTK" required autocomplete="off">
 
-          <div class="fg">
-            <label for="in-pass">Kata sandi</label>
-            <input type="password" id="in-pass" placeholder="Masukkan kata sandi" required>
-          </div>
+        <label for="p">Kata sandi</label>
+        <input id="p" type="password" placeholder="Masukkan kata sandi" required>
 
-          <button type="submit" class="btn-lg">Masuk</button>
-        </form>
+        <button type="submit" class="btn" style="width:100%;margin-top:18px">Masuk</button>
 
-        <p class="lg-note">
+        <p class="note" style="margin-top:18px;line-height:1.5">
           Akses terbatas untuk civitas Unika De La Salle Manado. Akun dosen didaftarkan oleh admin BAAD.
         </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- KONTAINER UTAMA APLIKASI -->
+  <div id="app" style="display:none">
+    <aside>
+      <div class="brand">
+        <img src="Univ_Katolik_De_La_Salle.jpeg" alt="Logo">
+        <div>SIPKD<small>Unika De La Salle</small></div>
       </div>
-    </div>
+      <nav id="nv"></nav>
+      <div id="me"></div>
+      <button type="button" class="btn w" style="margin-top:8px;width:100%" onclick="bye()">Keluar</button>
+    </aside>
+
+    <main>
+      <header id="hd"></header>
+      <div id="bd"></div>
+    </main>
   </div>
 
-  <!-- KONTAINER UTAMA APLIKASI (BERANDA DOSEN / ADMIN / WR 1) -->
-  <div id="app" class="hide">
-    <aside class="sb" id="sb"></aside>
-    <div class="mn">
-      <header class="tb" id="tb"></header>
-      <main class="ct" id="ct"></main>
-    </div>
-  </div>
-
-  <!-- MODAL & TOAST NOTIFIKASI -->
-  <div id="md" class="md hide"></div>
-  <div id="ts" class="ts"></div>
+  <!-- MODAL & TOAST -->
+  <div id="m" onclick="if(event.target==this)cl()"><div></div></div>
+  <div id="t"></div>
 
   <!-- SCRIPT APLIKASI -->
   <script src="data.js"></script>
@@ -69,5 +69,9 @@
   <script src="dosen.js"></script>
   <script src="admin.js"></script>
   <script src="wr.js"></script>
+  <script>
+    // Render awal saat seluruh script selesai dimuat
+    window.addEventListener('DOMContentLoaded', () => draw());
+  </script>
 </body>
 </html>
