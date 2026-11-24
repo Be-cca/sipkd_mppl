@@ -9,7 +9,6 @@ let _savedS = {};
 try { _savedS = JSON.parse(localStorage.getItem(SK)) || {}; } catch (e) {}
 const S = {
   role: _savedS.role || null,
-  lr:   _savedS.lr   || 'dosen',
   pg:   _savedS.pg   || null,
   me:   _savedS.me   || null,
   tab:  {},
@@ -18,7 +17,7 @@ const S = {
 
 const saveS = () => {
   try {
-    localStorage.setItem(SK, JSON.stringify({ role: S.role, lr: S.lr, pg: S.pg, me: S.me }));
+    localStorage.setItem(SK, JSON.stringify({ role: S.role, pg: S.pg, me: S.me }));
   } catch (e) {}
 };
 
@@ -72,6 +71,7 @@ const U = {
 // --- Kontrol Drawer Sidebar Mobile ---
 const togNav = open => {
   const sb = $('aside');
+  if (!sb) return;
   let ov = $('#ov');
   if (!ov) {
     ov = document.createElement('div');
@@ -91,7 +91,7 @@ const bd = (t, k = '') => `<span class="bd ${k}">${t}</span>`;
 const bar = (p, col) => `<div class="bar"><i style="width:${p}%${col ? ';background:' + col : ''}"></i></div>`;
 const li = (k, t, s, r = '') => `<div class="li"><span class="dot ${k}">${DOT[k] || '•'}</span><div><b>${t}</b><small>${s}</small></div>${r}</div>`;
 const st = a => `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">${a.map(([l, v]) => c('', `<div class="st"><span>${l}</span><b>${v}</b></div>`)).join('')}</div>`;
-const tabs = (a, k) => `<div class="tabs">${a.map(([v, l]) => `<button class="${(S.tab[k] || a[0][0]) == v ? 'on' : ''}" onclick="S.tab['${k}']='${v}';draw()">${l}</button>`).join('')}</div>`;
+const tabs = (a, k) => `<div class="tabs">${a.map(([v, l]) => `<button class="${(S.tab[k] \vert{}\vert{} a[0][0]) == v ? 'on' : ''}" onclick="S.tab['${k}']='${v}';draw()">${l}</button>`).join('')}</div>`;
 const fd = (l, ph, t = 'text') => `<label>${l}</label><input type="${t}" placeholder="${ph}">`;
 const sel = (l, a) => `<label>${l}</label><select>${a.map(o => `<option>${o}</option>`).join('')}</select>`;
 const fi = (l, id, ph, t = 'text', v = '') => `<label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${v}">`;
@@ -115,7 +115,7 @@ const bye = () => modal(`
   <h3 style="margin-bottom:8px">Keluar dari akun?</h3>
   <p class="note">Anda akan kembali ke halaman masuk dan perlu memasukkan NIDN atau NUPTK dan kata sandi lagi.</p>
   <div style="margin-top:16px">
-    <button class="btn rd" onclick="cl();S.role=null;saveS();draw()">Ya, Keluar</button>
+    <button class="btn rd" onclick="cl();S.role=null;S.me=null;S.pg=null;saveS();draw()">Ya, Keluar</button>
     <button class="btn w" onclick="cl()">Batal</button>
   </div>
 `);
@@ -140,9 +140,11 @@ const resetD = () => {
   D = seed();
   save();
   S.role = null;
+  S.me = null;
+  S.pg = null;
   saveS();
-  toast('Data demo direset & disinkronkan');
-  setLr(S.lr);
+  toast('Data direset & disinkronkan');
+  draw();
 };
 
 const L = (k, t, s) => { D.lg = [[k, t, s + ' · ' + now()], ...D.lg].slice(0, 30); };
@@ -175,36 +177,51 @@ const kb = v => v == 'Eligible' ? 'g' : v == 'Belum' ? 'r' : '';
 const VT = { m: ['Menunggu', 'Menunggu'], d: ['Disetujui', 'Terverifikasi'], t: ['Ditolak', 'Ditolak'] };
 const PRODI = ['Teknik Sipil', 'Teknik Informatika', 'Manajemen', 'Pendidikan Guru'];
 
-// --- Autentikasi & Login ---
-const DEF = {
-  dosen: ['0412038801', 'demo1234'],
-  admin: ['admin.baad', 'demo1234'],
-  wr:    ['wr1.unika', 'demo1234']
-};
-
-const setLr = k => {
-  S.lr = k;
-  saveS();
-  if (!S.role) {
-    $('#u').value = DEF[k][0];
-    $('#p').value = DEF[k][1];
-  }
-  draw();
-};
+// --- Autentikasi Otomatis Berdasarkan NIDN / NUPTK ---
+// Daftar kredensial Admin BAAD & WR 1 (bisa ditambah sesuai NIDN/NUPTK masing-masing)
+const AKUN_KHUSUS = [
+  { id: 'admin.baad', pass: 'demo1234', role: 'admin' },
+  { id: '1985010101', pass: 'admin123', role: 'admin' },
+  { id: 'wr1.unika',  pass: 'demo1234', role: 'wr' },
+  { id: '0901017501', pass: 'wr123456', role: 'wr' }
+];
 
 const lgin = e => {
   e.preventDefault();
   const u = $('#u').value.trim();
-  if (!u || !$('#p').value) return toast('Isi NIDN/NUPTK dan kata sandi');
-  if (S.lr == 'dosen') {
-    const d = D.dos.find(x => x.id == u);
-    if (!d) return toast('NIDN tidak terdaftar. Coba 0412038801');
-    S.me = d.id;
+  const p = $('#p').value;
+  if (!u || !p) return toast('Isi NIDN/NUPTK dan kata sandi');
+
+  // 1. Cek apakah NIDN/NUPTK termasuk akun Admin BAAD atau WR 1
+  const khusus = AKUN_KHUSUS.find(a => a.id.toLowerCase() === u.toLowerCase());
+  if (khusus) {
+    if (khusus.pass !== p) return toast('Kata sandi salah');
+    S.role = khusus.role;
+    S.me = null;
+    S.pg = null;
+    saveS();
+    draw();
+    return;
   }
-  S.role = S.lr;
-  S.pg = null;
-  saveS();
-  draw();
+
+  // 2. Cek apakah NIDN/NUPTK terdaftar di database Dosen (D.dos)
+  const d = D.dos.find(x => String(x.id).toLowerCase() === u.toLowerCase());
+  if (d) {
+    // Jika data dosen punya field sandi (d.pw atau d.p), validasi; jika belum diset, pakai default 'demo1234' atau NIDN-nya sendiri
+    const sandiDosen = d.pw || d.p || 'demo1234';
+    if (p !== sandiDosen && p !== String(d.id)) {
+      return toast('Kata sandi dosen salah');
+    }
+    S.role = 'dosen';
+    S.me = d.id;
+    S.pg = null;
+    saveS();
+    draw();
+    return;
+  }
+
+  // 3. Jika tidak ditemukan di mana pun
+  toast('NIDN / NUPTK tidak terdaftar');
 };
 
 const stt = () => st([
@@ -221,7 +238,7 @@ const rep = () => {
       ${c('Kelengkapan Persyaratan per Prodi', PR.map(n => {
         const a = D.dos.filter(d => d.pr == n);
         const p = Math.round(a.reduce((s, d) => s + pct(d.id), 0) / a.length);
-        return `<p style="margin-top:10px"><b>${n}</b><span style="float:right">${p}%</span></p>${bar(p, p < 65 ? '#C2570C' : '')}`;
+        return `<p style="margin-top:10px"><b>${n}</b><span style="float:right">${p}\%</span></p>${bar(p, p < 65 ? '#C2570C' : '')}`;
       }).join('') || '<p class="note">Belum ada data.</p>')}
       ${c('Cetak dan Ekspor', `
         <p class="note" style="margin:0 0 8px">Rekap eligibilitas dan kelengkapan berkas.</p>
@@ -250,11 +267,8 @@ function draw(keepScroll = false) {
 
   if (!r) {
     togNav(false);
-    $('#lt').innerHTML = '<div class="tabs">' +
-      [['dosen', 'Dosen'], ['admin', 'Admin BAAD'], ['wr', 'WR 1']]
-        .map(([k, l]) => `<button type="button" class="${S.lr == k ? 'on' : ''}" onclick="setLr('${k}')">${l}</button>`)
-        .join('') +
-      '</div>';
+    // Kosongkan input saat kembali ke halaman login
+    if ($('#u') && !$('#u').value) $('#p').value = '';
     return;
   }
 
