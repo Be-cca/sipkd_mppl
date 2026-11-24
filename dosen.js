@@ -1,4 +1,4 @@
-/* dosen.js: layar Dosen (Beranda, Persyaratan, Berkas dengan pratinjau asli, Notifikasi, Pindah Tugas, Profil) */
+/* dosen.js: layar Dosen (Beranda, Persyaratan, Berkas dengan pratinjau & filter status, Notifikasi, Pindah Tugas, Profil) */
 const upl = () => {
   const f = $('#fl').files[0], t = $('#jn').value;
   if (['s', 'j'].filter(k => D.sy[k].some(x => x.j == t)).every(k => dl(k) < 0))
@@ -45,6 +45,13 @@ const sp = () => {
   toast('Perubahan disimpan');
 };
 
+// Navigasi cepat dari kartu Status Berkas Saya menuju halaman Berkas sesuai status
+const goBerkasStatus = status => {
+  S.tab.bf = status;
+  S.pg = 'berkas';
+  draw();
+};
+
 P.dosen = {
   beranda: () => {
     const m = me(), i = m.id, s = SYs(i, 's'), t = s.length;
@@ -58,6 +65,8 @@ P.dosen = {
 
     return ['Selamat datang', m.n, `
       <div class="grid">
+        ${c('Batas Pengumpulan ' + dlb('s'), `
+          <p class="note" style="margin:0">Serdos ${fmt(D.dl.s)} · JAD ${fmt(D.dl.j)} · diatur oleh admin</p>`)}
         ${c('Kelengkapan Persyaratan Serdos', `
           <div style="display:flex;gap:22px;align-items:center">
             <div class="donut" style="background:conic-gradient(var(--g) 0 ${p}%,var(--y) 0 ${q}%,var(--b) 0)">
@@ -75,9 +84,13 @@ P.dosen = {
         ${c('Kenaikan Jabatan Akademik ' + (el(i, 'j') ? bd('Eligible', 'g') : bd('Dalam proses')), `
           <p class="note" style="margin:0">${m.jab} · ${j} dari ${jt} syarat</p>
           ${bar(j / jt * 100, '#C2570C')}`)}
-        ${c('Batas Pengumpulan ' + dlb('s'), `
-          <p class="note" style="margin:0">Serdos ${fmt(D.dl.s)} · JAD ${fmt(D.dl.j)} · diatur oleh admin</p>`)}
-        ${c('Status Berkas Saya', bd(n('Terverifikasi') + ' Terverifikasi', 'g') + ' ' + bd(n('Menunggu') + ' Menunggu') + ' ' + bd(n('Ditolak') + ' Ditolak', 'r'))}
+        ${c('Status Berkas Saya', `
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button type="button" class="bd g" style="border:0;cursor:pointer;font-family:inherit" onclick="goBerkasStatus('Terverifikasi')">${n('Terverifikasi')} Terverifikasi</button>
+            <button type="button" class="bd" style="border:0;cursor:pointer;font-family:inherit" onclick="goBerkasStatus('Menunggu')">${n('Menunggu')} Menunggu</button>
+            <button type="button" class="bd r" style="border:0;cursor:pointer;font-family:inherit" onclick="goBerkasStatus('Ditolak')">${n('Ditolak')} Ditolak</button>
+          </div>
+          <p class="note" style="margin:8px 0 0">Klik status di atas untuk melihat daftar berkas terkait.</p>`)}
         ${c('Perlu Tindakan', rej.length ? rej.map(b => li('r', b.t, 'Ditolak: ' + b.c)).join('') : '<p class="note" style="margin:0">Tidak ada tindakan.</p>')}
         ${contact}
       </div>`];
@@ -94,11 +107,19 @@ P.dosen = {
 
   berkas: () => {
     const i = me().id;
-    const B = D.ber.filter(b => b.d == i).reverse();
+    const flt = S.tab.bf || 'Semua';
+    const allB = D.ber.filter(b => b.d == i).reverse();
+    const B = flt === 'Semua' ? allB : allB.filter(b => b.s === flt);
     const J = [...new Set([...D.sy.s, ...D.sy.j].map(x => x.j).filter(Boolean))];
-    return ['Pengelolaan', 'Berkas Saya', `
-      <div class="grid">
-        ${c('Daftar Berkas', `
+    return ['Pengelolaan', 'Berkas Saya',
+      tabs([
+        ['Semua', 'Semua (' + allB.length + ')'],
+        ['Terverifikasi', 'Terverifikasi (' + allB.filter(b => b.s === 'Terverifikasi').length + ')'],
+        ['Menunggu', 'Menunggu (' + allB.filter(b => b.s === 'Menunggu').length + ')'],
+        ['Ditolak', 'Ditolak (' + allB.filter(b => b.s === 'Ditolak').length + ')']
+      ], 'bf') +
+      `<div class="grid">
+        ${c('Daftar Berkas' + (flt !== 'Semua' ? ' · ' + flt : ''), `
           <div style="overflow-x:auto">
             <table style="width:100%;table-layout:fixed">
               <tr>
@@ -116,7 +137,7 @@ P.dosen = {
                   <td style="text-align:right;white-space:nowrap">
                     ${bd(b.s, b.s == 'Terverifikasi' ? 'g' : b.s == 'Ditolak' ? 'r' : '')}
                   </td>
-                </tr>`).join('') || '<tr><td colspan="3">Belum ada berkas.</td></tr>'}
+                </tr>`).join('') || `<tr><td colspan="3">Tidak ada berkas dengan status ${flt.toLowerCase()}.</td></tr>`}
             </table>
           </div>`)}
         ${c('Unggah Berkas',
