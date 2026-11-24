@@ -1,4 +1,4 @@
-/* dosen.js: layar Dosen (Beranda dengan filter berkas per Serdos & JAD, Persyaratan, Berkas, Notifikasi, Pindah Tugas, Profil) */
+/* dosen.js: layar Dosen (Beranda tanpa Perlu Tindakan, Persyaratan, Berkas dengan penanda kategori Serdos & JAD, Notifikasi, Pindah Tugas, Profil) */
 const upl = () => {
   const f = $('#fl').files[0], t = $('#jn').value;
   if (['s', 'j'].filter(k => D.sy[k].some(x => x.j == t)).every(k => dl(k) < 0))
@@ -86,6 +86,24 @@ const renderStatusBerkasKategori = (kat, berkasList) => {
   `;
 };
 
+// Helper penanda kategori (Serdos / Kenaikan JAD) dari jenis berkas
+const infoKategoriBerkas = jenis => {
+  const syS = D.sy.s.find(x => x.j === jenis);
+  const syJ = D.sy.j.find(x => x.j === jenis);
+  const badges = [];
+  if (syS) badges.push('<span class="bd g" style="font-size:10.5px;padding:2px 8px">Serdos</span>');
+  if (syJ) badges.push('<span class="bd" style="font-size:10.5px;padding:2px 8px">Kenaikan JAD</span>');
+  const namaSyarat = [syS && syS.t, syJ && syJ.t]
+    .filter((v, idx, arr) => v && arr.indexOf(v) === idx)
+    .join(' / ');
+  return {
+    isSerdos: !!syS,
+    isJad: !!syJ,
+    badgeHtml: badges.join(' '),
+    namaSyarat
+  };
+};
+
 P.dosen = {
   beranda: () => {
     const m = me(), i = m.id, s = SYs(i, 's'), t = s.length;
@@ -94,9 +112,7 @@ P.dosen = {
     const q = Math.round((cn('g') + cn('y')) / t * 100);
     const B = D.ber.filter(b => b.d == i);
     const j = pr(i, 'j'), jt = D.sy.j.length;
-    const rej = B.filter(b => b.s == 'Ditolak');
 
-    // Kelompokkan berkas milik dosen berdasarkan persyaratan Serdos ('s') dan JAD ('j')
     const jenisSerdos = new Set(D.sy.s.map(x => x.j).filter(Boolean));
     const jenisJad    = new Set(D.sy.j.map(x => x.j).filter(Boolean));
     const berkasSerdos = B.filter(b => jenisSerdos.has(b.t));
@@ -125,7 +141,6 @@ P.dosen = {
           <p class="note" style="margin:0">${m.jab} · ${j} dari ${jt} syarat</p>
           ${bar(j / jt * 100, '#C2570C')}
           ${renderStatusBerkasKategori('j', berkasJad)}`)}
-        ${c('Perlu Tindakan', rej.length ? rej.map(b => li('r', b.t, 'Ditolak: ' + b.c)).join('') : '<p class="note" style="margin:0">Tidak ada tindakan.</p>')}
         ${contact}
       </div>`];
   },
@@ -141,41 +156,65 @@ P.dosen = {
 
   berkas: () => {
     const i = me().id;
-    const flt = S.tab.bf || 'Semua';
+    const katFilter = S.tab.bkat || 'semua';
     const allB = D.ber.filter(b => b.d == i).reverse();
-    const B = flt === 'Semua' ? allB : allB.filter(b => b.s === flt);
+
+    const cntSerdos = allB.filter(b => infoKategoriBerkas(b.t).isSerdos).length;
+    const cntJad    = allB.filter(b => infoKategoriBerkas(b.t).isJad).length;
+
+    const B = allB.filter(b => {
+      const info = infoKategoriBerkas(b.t);
+      if (katFilter === 'serdos') return info.isSerdos;
+      if (katFilter === 'jad') return info.isJad;
+      return true;
+    });
+
+    // Beri label kategori pada dropdown pilihan jenis berkas saat unggah
     const J = [...new Set([...D.sy.s, ...D.sy.j].map(x => x.j).filter(Boolean))];
+    const optJenis = J.map(j => {
+      const inf = infoKategoriBerkas(j);
+      const tag = [inf.isSerdos ? 'Serdos' : '', inf.isJad ? 'JAD' : ''].filter(Boolean).join(' & ');
+      return `<option value="${j}">${j}${tag ? ' (' + tag + ')' : ''}</option>`;
+    }).join('');
+
     return ['Pengelolaan', 'Berkas Saya',
       tabs([
-        ['Semua', 'Semua (' + allB.length + ')'],
-        ['Terverifikasi', 'Terverifikasi (' + allB.filter(b => b.s === 'Terverifikasi').length + ')'],
-        ['Menunggu', 'Menunggu (' + allB.filter(b => b.s === 'Menunggu').length + ')'],
-        ['Ditolak', 'Ditolak (' + allB.filter(b => b.s === 'Ditolak').length + ')']
-      ], 'bf') +
+        ['semua', 'Semua Berkas (' + allB.length + ')'],
+        ['serdos', 'Persyaratan Serdos (' + cntSerdos + ')'],
+        ['jad', 'Kenaikan JAD (' + cntJad + ')']
+      ], 'bkat') +
       `<div class="grid">
-        ${c('Daftar Berkas' + (flt !== 'Semua' ? ' · ' + flt : ''), `
+        ${c('Daftar Berkas', `
           <div style="overflow-x:auto">
             <table style="width:100%;table-layout:fixed">
               <tr>
-                <th style="width:48%">Berkas</th>
-                <th style="width:24%">Tanggal</th>
-                <th style="width:28%;text-align:right">Status</th>
+                <th style="width:52%">Berkas &amp; Persyaratan</th>
+                <th style="width:22%">Tanggal</th>
+                <th style="width:26%;text-align:right">Status</th>
               </tr>
-              ${B.map(b => `
+              ${B.map(b => {
+                const inf = infoKategoriBerkas(b.t);
+                return `
                 <tr>
                   <td style="word-break:break-word">
-                    ${b.url ? `<a href="${b.url}" download="${b.f}" style="color:inherit;text-decoration:underline;font-weight:600">${b.f}</a>` : b.f}
-                    <small class="note" style="display:block">${b.t}${b.c ? ' · ' + b.c : ''}</small>
+                    <div style="margin-bottom:4px;display:flex;flex-wrap:wrap;gap:4px">
+                      ${inf.badgeHtml}
+                    </div>
+                    ${b.url ? `<a href="${b.url}" download="${b.f}" style="color:inherit;text-decoration:underline;font-weight:700">${b.f}</a>` : `<b>${b.f}</b>`}
+                    <small class="note" style="display:block;margin-top:3px">
+                      Syarat: <b>${inf.namaSyarat || b.t}</b>${b.c ? ' · <span style="color:var(--r)">' + b.c + '</span>' : ''}
+                    </small>
                   </td>
                   <td style="font-size:12px">${b.tg}</td>
                   <td style="text-align:right;white-space:nowrap">
                     ${bd(b.s, b.s == 'Terverifikasi' ? 'g' : b.s == 'Ditolak' ? 'r' : '')}
                   </td>
-                </tr>`).join('') || `<tr><td colspan="3">Tidak ada berkas dengan status ${flt.toLowerCase()}.</td></tr>`}
+                </tr>`;
+              }).join('') || '<tr><td colspan="3">Belum ada berkas pada kategori ini.</td></tr>'}
             </table>
           </div>`)}
         ${c('Unggah Berkas',
-          sl('Jenis berkas', 'jn', J) +
+          `<label>Jenis berkas</label><select id="jn">${optJenis}</select>` +
           `<label>Berkas (PDF / JPG / PNG, maks. 3 MB)</label>
            <div class="drop" style="cursor:pointer" onclick="$('#fl').click()">
              <span id="fn">Klik untuk memilih berkas</span>
