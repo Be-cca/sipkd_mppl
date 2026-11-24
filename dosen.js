@@ -1,4 +1,4 @@
-/* dosen.js: layar Dosen (Beranda, Persyaratan, Berkas dengan pratinjau & filter status, Notifikasi, Pindah Tugas, Profil) */
+/* dosen.js: layar Dosen (Beranda dengan filter berkas per Serdos & JAD, Persyaratan, Berkas, Notifikasi, Pindah Tugas, Profil) */
 const upl = () => {
   const f = $('#fl').files[0], t = $('#jn').value;
   if (['s', 'j'].filter(k => D.sy[k].some(x => x.j == t)).every(k => dl(k) < 0))
@@ -45,11 +45,45 @@ const sp = () => {
   toast('Perubahan disimpan');
 };
 
-// Navigasi cepat dari kartu Status Berkas Saya menuju halaman Berkas sesuai status
-const goBerkasStatus = status => {
-  S.tab.bf = status;
-  S.pg = 'berkas';
-  draw();
+// Toggle daftar berkas berdasarkan kategori ('s' Serdos / 'j' JAD) & status ('Terverifikasi' / 'Menunggu' / 'Ditolak')
+const togBerkasCard = (kat, status) => {
+  const key = 'bk_' + kat;
+  S.tab[key] = (S.tab[key] === status) ? '' : status;
+  draw(true);
+};
+
+// Render tombol status berkas & daftar rincian berkas di bagian bawah kartu Serdos / JAD
+const renderStatusBerkasKategori = (kat, berkasList) => {
+  const aktif = S.tab['bk_' + kat] || '';
+  const cnt = st => berkasList.filter(b => b.s === st).length;
+  const filtered = aktif ? berkasList.filter(b => b.s === aktif) : [];
+
+  return `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--b)">
+      <small class="note" style="display:block;margin:0 0 8px">Status Berkas (klik untuk melihat rincian):</small>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <button type="button" class="bd g" style="border:${aktif === 'Terverifikasi' ? '2px solid var(--g)' : '0'};cursor:pointer;font-family:inherit" onclick="togBerkasCard('${kat}','Terverifikasi')">${cnt('Terverifikasi')} Terverifikasi</button>
+        <button type="button" class="bd" style="border:${aktif === 'Menunggu' ? '2px solid #92400E' : '0'};cursor:pointer;font-family:inherit" onclick="togBerkasCard('${kat}','Menunggu')">${cnt('Menunggu')} Menunggu</button>
+        <button type="button" class="bd r" style="border:${aktif === 'Ditolak' ? '2px solid var(--r)' : '0'};cursor:pointer;font-family:inherit" onclick="togBerkasCard('${kat}','Ditolak')">${cnt('Ditolak')} Ditolak</button>
+      </div>
+      ${aktif ? `
+        <div style="margin-top:10px;background:rgba(0,0,0,0.04);border:1px solid var(--b);border-radius:10px;padding:8px 12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <small style="font-weight:700">Berkas ${aktif} (${filtered.length})</small>
+            <button type="button" style="border:0;background:none;color:var(--m);font-size:11px;cursor:pointer;text-decoration:underline" onclick="togBerkasCard('${kat}','${aktif}')">Tutup</button>
+          </div>
+          ${filtered.length
+            ? filtered.map(b => li(
+                b.s === 'Terverifikasi' ? 'g' : b.s === 'Ditolak' ? 'r' : 'y',
+                b.t,
+                b.f + ' · ' + b.tg + (b.c ? ' · ' + b.c : '')
+              )).join('')
+            : `<p class="note" style="margin:6px 0">Tidak ada berkas dengan status ${aktif.toLowerCase()}.</p>`
+          }
+        </div>
+      ` : ''}
+    </div>
+  `;
 };
 
 P.dosen = {
@@ -59,9 +93,14 @@ P.dosen = {
     const p = Math.round(cn('g') / t * 100);
     const q = Math.round((cn('g') + cn('y')) / t * 100);
     const B = D.ber.filter(b => b.d == i);
-    const n = x => B.filter(b => b.s == x).length;
     const j = pr(i, 'j'), jt = D.sy.j.length;
     const rej = B.filter(b => b.s == 'Ditolak');
+
+    // Kelompokkan berkas milik dosen berdasarkan persyaratan Serdos ('s') dan JAD ('j')
+    const jenisSerdos = new Set(D.sy.s.map(x => x.j).filter(Boolean));
+    const jenisJad    = new Set(D.sy.j.map(x => x.j).filter(Boolean));
+    const berkasSerdos = B.filter(b => jenisSerdos.has(b.t));
+    const berkasJad    = B.filter(b => jenisJad.has(b.t));
 
     return ['Selamat datang', m.n, `
       <div class="grid">
@@ -80,17 +119,12 @@ P.dosen = {
           </div>`)}
         ${c('Sertifikasi Dosen ' + (el(i, 's') ? bd('Eligible', 'g') : bd('Belum eligible', 'r')), `
           <p class="note" style="margin:0">${cn('g')} dari ${t} persyaratan terpenuhi</p>
-          ${bar(p)}`)}
+          ${bar(p)}
+          ${renderStatusBerkasKategori('s', berkasSerdos)}`)}
         ${c('Kenaikan Jabatan Akademik ' + (el(i, 'j') ? bd('Eligible', 'g') : bd('Dalam proses')), `
           <p class="note" style="margin:0">${m.jab} · ${j} dari ${jt} syarat</p>
-          ${bar(j / jt * 100, '#C2570C')}`)}
-        ${c('Status Berkas Saya', `
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            <button type="button" class="bd g" style="border:0;cursor:pointer;font-family:inherit" onclick="goBerkasStatus('Terverifikasi')">${n('Terverifikasi')} Terverifikasi</button>
-            <button type="button" class="bd" style="border:0;cursor:pointer;font-family:inherit" onclick="goBerkasStatus('Menunggu')">${n('Menunggu')} Menunggu</button>
-            <button type="button" class="bd r" style="border:0;cursor:pointer;font-family:inherit" onclick="goBerkasStatus('Ditolak')">${n('Ditolak')} Ditolak</button>
-          </div>
-          <p class="note" style="margin:8px 0 0">Klik status di atas untuk melihat daftar berkas terkait.</p>`)}
+          ${bar(j / jt * 100, '#C2570C')}
+          ${renderStatusBerkasKategori('j', berkasJad)}`)}
         ${c('Perlu Tindakan', rej.length ? rej.map(b => li('r', b.t, 'Ditolak: ' + b.c)).join('') : '<p class="note" style="margin:0">Tidak ada tindakan.</p>')}
         ${contact}
       </div>`];
