@@ -314,6 +314,37 @@ label {
   margin: 10px 0 4px;
 }
 
+/* --- Tombol Mata Lihat Kata Sandi --- */
+.pw-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pw-wrap input {
+  padding-right: 44px;
+}
+
+.pw-eye {
+  position: absolute;
+  right: 8px;
+  border: 0;
+  background: none;
+  color: var(--m);
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.pw-eye:hover {
+  color: var(--t);
+  background: rgba(128, 128, 128, 0.12);
+}
+
 .li {
   display: flex;
   gap: 12px;
