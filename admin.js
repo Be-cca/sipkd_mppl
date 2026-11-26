@@ -121,84 +121,13 @@ const detail = id => {
   `);
 };
 
-// --- Cache Blob URL agar PDF tampil tajam, melebar penuh (FitW), dan tidak menyempit ---
-const _blobCache = {};
-const getBlobUrl = v => {
-  if (!v || !v.url) return '';
-  if (_blobCache[v.id]) return _blobCache[v.id];
-  try {
-    const [hdr, b64] = v.url.split(',');
-    const mime = (hdr.match(/:(.*?);/) || [])[1] || 'application/octet-stream';
-    const bin = atob(b64);
-    const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    _blobCache[v.id] = URL.createObjectURL(new Blob([arr], { type: mime }));
-    return _blobCache[v.id];
-  } catch (e) {
-    return v.url;
-  }
-};
-
-const dataUrlToBlob = async dataUrl => {
-  const res = await fetch(dataUrl);
-  return await res.blob();
-};
-
-// --- Unduh Berkas: Cek folder nama dosen (buat jika belum ada, pakai jika sudah ada) ---
-const dlToDosenFolder = async id => {
-  const v = D.ber.find(x => x.id == id);
-  if (!v || !v.url) return toast('Berkas tidak memiliki lampiran fisik');
-
-  const namaDosen = dn(v.d).replace(/[\\/:*?"<>|]/g, '_').trim();
-  const namaFile  = v.f.replace(/[\\/:*?"<>|]/g, '_').trim();
-  const blob      = await dataUrlToBlob(v.url);
-
-  if (typeof window.showDirectoryPicker === 'function') {
-    try {
-      const rootDir = await window.showDirectoryPicker({ mode: 'readwrite' });
-
-      let dosenDir;
-      let statusFolder = 'ditemukan';
-      try {
-        // Cek apakah folder bernama dosen tersebut sudah ada
-        dosenDir = await rootDir.getDirectoryHandle(namaDosen, { create: false });
-      } catch (e) {
-        // Jika belum ada, buat folder baru dengan nama dosen tersebut
-        dosenDir = await rootDir.getDirectoryHandle(namaDosen, { create: true });
-        statusFolder = 'dibuat';
-      }
-
-      // Simpan file langsung di dalam folder nama dosen tersebut
-      const fileHandle = await dosenDir.getFileHandle(namaFile, { create: true });
-      const writable   = await fileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-
-      toast(`Folder "${namaDosen}" (${statusFolder}) · Berkas tersimpan!`);
-      return;
-    } catch (err) {
-      if (err && err.name === 'AbortError') return;
-    }
-  }
-
-  // Fallback jika browser tidak mendukung pemilihan folder langsung
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${namaDosen} - ${namaFile}`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  toast(`Mengunduh ${namaDosen} - ${namaFile}`);
-};
-
-// --- Pratinjau Dokumen Asli (Melebar Penuh & Rapi) ---
+// --- Pratinjau Dokumen Asli (PDF / Gambar / Unduh) ---
 const openDoc = id => {
   const b = D.ber.find(x => x.id == id);
   if (!b || !b.url) return toast('Berkas demo bawaan tidak memiliki file fisik');
-  const blobUrl = getBlobUrl(b);
   const win = window.open();
   if (win) {
-    win.document.write(`<title>${b.f}</title><body style="margin:0;background:#18181b"><iframe src="${blobUrl}#view=FitW&navpanes=0" style="border:0;width:100vw;height:100vh"></iframe></body>`);
+    win.document.write('<title>' + b.f + '</title><body style="margin:0;background:#111"><iframe src="' + b.url + '" style="border:0;width:100vw;height:100vh"></iframe></body>');
   }
 };
 
@@ -209,26 +138,19 @@ const renderPreview = v => {
       <small class="note" style="display:block;margin-top:4px">Berkas contoh bawaan sistem (belum ada lampiran fisik yang diunggah).</small>
     </div>`;
   }
-  const isImg   = v.url.startsWith('data:image/');
-  const isPdf   = v.url.startsWith('data:application/pdf');
-  const blobUrl = getBlobUrl(v);
-
+  const isImg = v.url.startsWith('data:image/');
+  const isPdf = v.url.startsWith('data:application/pdf');
   return `
-    <div style="border:1.5px solid var(--b);border-radius:12px;overflow:hidden;background:#262626;width:100%">
+    <div style="border:1.5px solid var(--b);border-radius:12px;overflow:hidden;background:#111">
       ${isImg
-        ? `<div style="display:grid;place-items:center;padding:12px;background:#1f1f23">
-             <img src="${blobUrl}" alt="${v.f}" style="display:block;width:100%;max-height:480px;height:auto;border-radius:8px;padding:0;background:transparent;object-fit:contain">
-           </div>`
+        ? `<img src="${v.url}" alt="${v.f}" style="display:block;width:100%;max-height:360px;object-fit:contain">`
         : isPdf
-          ? `<iframe src="${blobUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitW&zoom=page-width" style="display:block;width:100%;height:500px;border:0;background:#fff"></iframe>`
-          : `<div style="padding:28px 16px;text-align:center;color:#fff"><b>${v.f}</b><p class="note">Pratinjau langsung tersedia untuk PDF dan gambar. Klik tombol di bawah untuk mengunduh ke folder dosen.</p></div>`
+          ? `<iframe src="${v.url}" style="display:block;width:100%;height:360px;border:0;background:#fff"></iframe>`
+          : `<div style="padding:24px;text-align:center;color:#fff"><b>${v.f}</b><p class="note">Pratinjau langsung hanya tersedia untuk PDF dan gambar. Klik tombol di bawah untuk mengunduh.</p></div>`
       }
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#141416;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08)">
-        <small style="color:#d4d4d8;font-size:11.5px">Folder: <b>${dn(v.d)}</b></small>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${(isImg || isPdf) ? `<button type="button" class="btn w" style="margin:0;padding:8px 12px;font-size:12px" onclick="openDoc(${v.id})">Buka Layar Penuh</button>` : ''}
-          <button type="button" class="btn" style="margin:0;padding:8px 14px;font-size:12px" onclick="dlToDosenFolder(${v.id})">Unduh ke Folder Dosen</button>
-        </div>
+      <div style="display:flex;gap:8px;padding:10px;background:rgba(0,0,0,.65);justify-content:flex-end">
+        ${(isImg || isPdf) ? `<button type="button" class="btn w" style="min-height:34px;padding:0 12px;font-size:12px" onclick="openDoc(${v.id})">Buka Layar Penuh</button>` : ''}
+        <a href="${v.url}" download="${v.f}" class="btn" style="min-height:34px;padding:0 12px;font-size:12px;display:inline-flex;align-items:center;text-decoration:none">Unduh Berkas</a>
       </div>
     </div>`;
 };
@@ -261,7 +183,7 @@ const ex = () => {
   </style></head><body>
     <table>
       <tr><td colspan="8" style="border:none;font-size:14pt;font-weight:bold;color:#1F1A05">REKAPITULASI PENGEMBANGAN KARIER DOSEN (SERDOS & JAD)</td></tr>
-      <tr><td colspan="8" style="border:none;font-size:11pt;color:#2F7D12;font-weight:bold">UNIVERSITAS KATOLIK DE LA SALLE MANADO · Biro Administrasi Akademik Dosen (BAAD)</td></tr>
+      <tr><td colspan="8" style="border:none;font-size:11pt;color:#2F7D12;font-weight:bold">Universitas Katolik De La Salle Manado · Biro Administrasi Akademik Dosen (BAAD)</td></tr>
       <tr><td colspan="8" style="border:none;font-size:10pt;color:#5C4A00">Tanggal Ekspor: ${tgl} · Batas Serdos: ${fmt(D.dl.s)} · Batas JAD: ${fmt(D.dl.j)}</td></tr>
       <tr><td colspan="8" style="border:none"></td></tr>
       <tr>
@@ -408,8 +330,8 @@ P.admin = {
     const v = Q.find(b => b.id == S.sel) || Q[0];
     return ['Verifikator BAAD (Sir / Staf)', 'Verifikasi Berkas', `
       <div class="tabs">${Object.entries(VT).map(([a, [l, s]]) => `<button class="${k == a ? 'on' : ''}" onclick="S.vt='${a}';S.sel=0;draw()">${l} ${D.ber.filter(b => b.s == s).length}</button>`).join('')}</div>
-      <div class="grid" style="grid-template-columns:minmax(220px,0.75fr) minmax(340px,1.45fr)">
-        ${c('Antrean', Q.map(x => `<div class="li" style="cursor:pointer;${v && x.id == v.id ? 'background:var(--ys);border-radius:10px;padding:11px 10px;' : ''}" onclick="S.sel=${x.id};draw(true)"><div><b>${dn(x.d)}</b><small>${x.t} · ${x.tg}</small></div></div>`).join('') || '<p class="note" style="margin:0">Tidak ada berkas.</p>')}
+      <div class="grid">
+        ${c('Antrean', Q.map(x => `<div class="li" style="cursor:pointer;${v && x.id == v.id ? 'background:var(--ys);' : ''}" onclick="S.sel=${x.id};draw(true)"><div><b>${dn(x.d)}</b><small>${x.t} · ${x.tg}</small></div></div>`).join('') || '<p class="note" style="margin:0">Tidak ada berkas.</p>')}
         ${c('Tinjau Berkas', v ? `
           <p><b>${dn(v.d)}</b><br><small class="note">${v.t} · ${v.f} · ${v.tg}</small></p>
           <label>Pratinjau dokumen</label>
@@ -417,7 +339,7 @@ P.admin = {
           ${v.s == 'Menunggu'
             ? `<label>Catatan (wajib jika ditolak)</label><textarea id="ct" rows="3" placeholder="Tulis alasan penolakan…"></textarea><div style="margin-top:12px"><button class="btn" onclick="act(${v.id},1)">Setujui</button><button class="btn w d" onclick="act(${v.id},0)">Tolak</button></div>`
             : `<p style="margin-top:10px">${bd(v.s, v.s == 'Ditolak' ? 'r' : 'g')} <small class="note">${v.c}</small></p>`
-          }` : '<p class="note" style="margin:0">Pilih berkas dari antrean.</p>', '" style="min-width:0;overflow:hidden')}
+          }` : '<p class="note" style="margin:0">Pilih berkas dari antrean.</p>')}
       </div>
     `];
   },
@@ -429,7 +351,7 @@ P.admin = {
         fi('Nama lengkap', 'r2', 'Nama dan gelar') +
         sl('Program studi', 'r3', PRODI) +
         `<button class="btn" style="margin-top:14px" onclick="mk($('#r1').value,$('#r2').value,$('#r3').value,'Asisten Ahli','')">Daftarkan Dosen</button>`)}
-      ${c('Pindah Tempat / Keluar',
+      ${c('Pindah Tugas / Keluar',
         (D.rq.map(r => li('', dn(r.d), r.a.replace(/pindah tugas/gi, 'Pindah tempat') + ' · ' + r.tg, `<button class="btn w d" onclick="out('${r.d}')">Keluarkan</button>`)).join('') || '<p class="note" style="margin:0">Tidak ada pengajuan.</p>') +
         '<p class="note">Akun dinonaktifkan dan data dikeluarkan dari database. Tercatat di log admin.</p>')}
     </div>
