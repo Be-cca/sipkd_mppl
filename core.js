@@ -42,7 +42,7 @@ const NAV = {
     ['syarat',  'Persyaratan', 'ok'],
     ['berkas',  'Berkas', 'dir'],
     ['notif',   'Notifikasi', 'bel'],
-    ['pindah',  'Pindah Tugas', 'out'],
+    ['pindah',  'Pindah Tempat', 'out'],
     ['profil',  'Profil', 'usr']
   ],
   admin: [
