@@ -352,7 +352,7 @@ P.admin = {
         sl('Program studi', 'r3', PRODI) +
         `<button class="btn" style="margin-top:14px" onclick="mk($('#r1').value,$('#r2').value,$('#r3').value,'Asisten Ahli','')">Daftarkan Dosen</button>`)}
       ${c('Pindah Tugas / Keluar',
-        (D.rq.map(r => li('', dn(r.d), r.a + ' · ' + r.tg, `<button class="btn w d" onclick="out('${r.d}')">Keluarkan</button>`)).join('') || '<p class="note" style="margin:0">Tidak ada pengajuan.</p>') +
+        (D.rq.map(r => li('', dn(r.d), r.a.replace(/pindah tugas/gi, 'Pindah tempat') + ' · ' + r.tg, `<button class="btn w d" onclick="out('${r.d}')">Keluarkan</button>`)).join('') || '<p class="note" style="margin:0">Tidak ada pengajuan.</p>') +
         '<p class="note">Akun dinonaktifkan dan data dikeluarkan dari database. Tercatat di log admin.</p>')}
     </div>
   `],
