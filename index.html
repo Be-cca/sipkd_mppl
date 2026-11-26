@@ -71,6 +71,14 @@
   <div id="m" onclick="if(event.target==this)cl()"><div></div></div>
   <div id="t"></div>
 
+  <!-- PDF.JS UNTUK PRATINJAU FIT-TO-PAGE -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
   <!-- SCRIPT APLIKASI -->
   <script src="data.js"></script>
   <script src="core.js"></script>
