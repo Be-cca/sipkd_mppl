@@ -121,75 +121,84 @@ const detail = id => {
   `);
 };
 
-// --- Helper Konversi DataURL ke Blob ---
+// --- Cache Blob URL agar PDF tampil tajam, melebar penuh (FitW), dan tidak menyempit ---
+const _blobCache = {};
+const getBlobUrl = v => {
+  if (!v || !v.url) return '';
+  if (_blobCache[v.id]) return _blobCache[v.id];
+  try {
+    const [hdr, b64] = v.url.split(',');
+    const mime = (hdr.match(/:(.*?);/) || [])[1] || 'application/octet-stream';
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    _blobCache[v.id] = URL.createObjectURL(new Blob([arr], { type: mime }));
+    return _blobCache[v.id];
+  } catch (e) {
+    return v.url;
+  }
+};
+
 const dataUrlToBlob = async dataUrl => {
   const res = await fetch(dataUrl);
   return await res.blob();
 };
 
-// --- Unduh Berkas ke Folder Nama Dosen -> Subfolder (serdos & jab) ---
+// --- Unduh Berkas: Cek folder nama dosen (buat jika belum ada, pakai jika sudah ada) ---
 const dlToDosenFolder = async id => {
   const v = D.ber.find(x => x.id == id);
   if (!v || !v.url) return toast('Berkas tidak memiliki lampiran fisik');
 
   const namaDosen = dn(v.d).replace(/[\\/:*?"<>|]/g, '_').trim();
   const namaFile  = v.f.replace(/[\\/:*?"<>|]/g, '_').trim();
-  const isSerdos  = D.sy.s.some(x => x.j === v.t);
-  const isJab     = D.sy.j.some(x => x.j === v.t);
+  const blob      = await dataUrlToBlob(v.url);
 
-  // Tentukan subfolder tujuan ('serdos', 'jab', atau keduanya jika persyaratan dipakai di kedua jalur)
-  const targetSubs = [];
-  if (isSerdos) targetSubs.push('serdos');
-  if (isJab)    targetSubs.push('jab');
-  if (!targetSubs.length) targetSubs.push('serdos');
-
-  const blob = await dataUrlToBlob(v.url);
-
-  // Gunakan File System Access API agar folder Dosen + subfolder serdos & jab otomatis terbuat / terpakai
   if (typeof window.showDirectoryPicker === 'function') {
     try {
       const rootDir = await window.showDirectoryPicker({ mode: 'readwrite' });
 
-      // Buat atau gunakan folder bernama Dosen tersebut
-      const dosenDir = await rootDir.getDirectoryHandle(namaDosen, { create: true });
-
-      // Pastikan kedua subfolder (serdos & jab) tersedia di dalam folder Dosen
-      const serdosDir = await dosenDir.getDirectoryHandle('serdos', { create: true });
-      const jabDir    = await dosenDir.getDirectoryHandle('jab', { create: true });
-      const dirMap    = { serdos: serdosDir, jab: jabDir };
-
-      // Simpan file ke subfolder yang sesuai
-      for (const sub of targetSubs) {
-        const fileHandle = await dirMap[sub].getFileHandle(namaFile, { create: true });
-        const writable   = await fileHandle.createWritable();
-        await writable.write(blob);
-        await writable.close();
+      let dosenDir;
+      let statusFolder = 'ditemukan';
+      try {
+        // Cek apakah folder bernama dosen tersebut sudah ada
+        dosenDir = await rootDir.getDirectoryHandle(namaDosen, { create: false });
+      } catch (e) {
+        // Jika belum ada, buat folder baru dengan nama dosen tersebut
+        dosenDir = await rootDir.getDirectoryHandle(namaDosen, { create: true });
+        statusFolder = 'dibuat';
       }
 
-      toast(`Tersimpan di folder "${namaDosen}/${targetSubs.join(' & ')}"`);
+      // Simpan file langsung di dalam folder nama dosen tersebut
+      const fileHandle = await dosenDir.getFileHandle(namaFile, { create: true });
+      const writable   = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+
+      toast(`Folder "${namaDosen}" (${statusFolder}) · Berkas tersimpan!`);
       return;
     } catch (err) {
-      if (err && err.name === 'AbortError') return; // Pengguna membatalkan pemilihan folder
+      if (err && err.name === 'AbortError') return;
     }
   }
 
-  // Fallback jika browser tidak mendukung showDirectoryPicker
+  // Fallback jika browser tidak mendukung pemilihan folder langsung
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${namaDosen}_${targetSubs[0]}_${namaFile}`;
+  a.download = `${namaDosen} - ${namaFile}`;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  toast(`Mengunduh ${namaDosen} (${targetSubs.join(' & ')})`);
+  toast(`Mengunduh ${namaDosen} - ${namaFile}`);
 };
 
-// --- Pratinjau Dokumen Asli (Muat & Rapi) ---
+// --- Pratinjau Dokumen Asli (Melebar Penuh & Rapi) ---
 const openDoc = id => {
   const b = D.ber.find(x => x.id == id);
   if (!b || !b.url) return toast('Berkas demo bawaan tidak memiliki file fisik');
+  const blobUrl = getBlobUrl(b);
   const win = window.open();
   if (win) {
-    win.document.write('<title>' + b.f + '</title><body style="margin:0;background:#111"><iframe src="' + b.url + '#view=FitH" style="border:0;width:100vw;height:100vh"></iframe></body>');
+    win.document.write(`<title>${b.f}</title><body style="margin:0;background:#18181b"><iframe src="${blobUrl}#view=FitW&navpanes=0" style="border:0;width:100vw;height:100vh"></iframe></body>`);
   }
 };
 
@@ -200,24 +209,22 @@ const renderPreview = v => {
       <small class="note" style="display:block;margin-top:4px">Berkas contoh bawaan sistem (belum ada lampiran fisik yang diunggah).</small>
     </div>`;
   }
-  const isImg = v.url.startsWith('data:image/');
-  const isPdf = v.url.startsWith('data:application/pdf');
-  const isSerdos = D.sy.s.some(x => x.j === v.t);
-  const isJab    = D.sy.j.some(x => x.j === v.t);
-  const katLabel = [isSerdos ? 'serdos' : '', isJab ? 'jab' : ''].filter(Boolean).join(' & ') || 'serdos';
+  const isImg   = v.url.startsWith('data:image/');
+  const isPdf   = v.url.startsWith('data:application/pdf');
+  const blobUrl = getBlobUrl(v);
 
   return `
-    <div style="border:1.5px solid var(--b);border-radius:12px;overflow:hidden;background:#18181b;width:100%">
+    <div style="border:1.5px solid var(--b);border-radius:12px;overflow:hidden;background:#262626;width:100%">
       ${isImg
-        ? `<div style="display:grid;place-items:center;padding:12px;background:#18181b">
-             <img src="${v.url}" alt="${v.f}" style="display:block;width:100%;max-height:440px;height:auto;border-radius:8px;padding:0;background:transparent;object-fit:contain">
+        ? `<div style="display:grid;place-items:center;padding:12px;background:#1f1f23">
+             <img src="${blobUrl}" alt="${v.f}" style="display:block;width:100%;max-height:480px;height:auto;border-radius:8px;padding:0;background:transparent;object-fit:contain">
            </div>`
         : isPdf
-          ? `<iframe src="${v.url}#view=FitH&navpanes=0&scrollbar=1" style="display:block;width:100%;height:460px;border:0;background:#fff"></iframe>`
-          : `<div style="padding:24px;text-align:center;color:#fff"><b>${v.f}</b><p class="note">Pratinjau langsung tersedia untuk PDF dan gambar. Klik tombol di bawah untuk mengunduh ke folder dosen.</p></div>`
+          ? `<iframe src="${blobUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitW&zoom=page-width" style="display:block;width:100%;height:500px;border:0;background:#fff"></iframe>`
+          : `<div style="padding:28px 16px;text-align:center;color:#fff"><b>${v.f}</b><p class="note">Pratinjau langsung tersedia untuk PDF dan gambar. Klik tombol di bawah untuk mengunduh ke folder dosen.</p></div>`
       }
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:rgba(0,0,0,.78);align-items:center;justify-content:space-between">
-        <small style="color:#e4e4e7;font-size:11.5px">Folder: <b>${dn(v.d)}/${katLabel}</b></small>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#141416;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08)">
+        <small style="color:#d4d4d8;font-size:11.5px">Folder: <b>${dn(v.d)}</b></small>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           ${(isImg || isPdf) ? `<button type="button" class="btn w" style="margin:0;padding:8px 12px;font-size:12px" onclick="openDoc(${v.id})">Buka Layar Penuh</button>` : ''}
           <button type="button" class="btn" style="margin:0;padding:8px 14px;font-size:12px" onclick="dlToDosenFolder(${v.id})">Unduh ke Folder Dosen</button>
@@ -401,7 +408,7 @@ P.admin = {
     const v = Q.find(b => b.id == S.sel) || Q[0];
     return ['Verifikator BAAD (Sir / Staf)', 'Verifikasi Berkas', `
       <div class="tabs">${Object.entries(VT).map(([a, [l, s]]) => `<button class="${k == a ? 'on' : ''}" onclick="S.vt='${a}';S.sel=0;draw()">${l} ${D.ber.filter(b => b.s == s).length}</button>`).join('')}</div>
-      <div class="grid" style="grid-template-columns:minmax(240px,0.85fr) minmax(320px,1.35fr)">
+      <div class="grid" style="grid-template-columns:minmax(220px,0.75fr) minmax(340px,1.45fr)">
         ${c('Antrean', Q.map(x => `<div class="li" style="cursor:pointer;${v && x.id == v.id ? 'background:var(--ys);border-radius:10px;padding:11px 10px;' : ''}" onclick="S.sel=${x.id};draw(true)"><div><b>${dn(x.d)}</b><small>${x.t} · ${x.tg}</small></div></div>`).join('') || '<p class="note" style="margin:0">Tidak ada berkas.</p>')}
         ${c('Tinjau Berkas', v ? `
           <p><b>${dn(v.d)}</b><br><small class="note">${v.t} · ${v.f} · ${v.tg}</small></p>
