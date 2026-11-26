@@ -1,4 +1,4 @@
-/* dosen.js: layar Dosen (Beranda tanpa Perlu Tindakan, Persyaratan, Berkas dengan penanda kategori Serdos & JAD, Notifikasi, Pindah Tugas, Profil) */
+/* dosen.js: layar Dosen (Beranda tanpa Perlu Tindakan, Persyaratan, Berkas dengan penanda kategori Serdos & JAD, Notifikasi, Pindah Tempat, Profil) */
 const upl = () => {
   const f = $('#fl').files[0], t = $('#jn').value;
   if (['s', 'j'].filter(k => D.sy[k].some(x => x.j == t)).every(k => dl(k) < 0))
@@ -34,7 +34,7 @@ const pj = () => {
   const m = me();
   if (D.rq.some(r => r.d == m.id)) return toast('Pengajuan sudah dikirim');
   D.rq.push({ d: m.id, a: $('#pa').value, tg: fmt(Date.now()) });
-  L('y', m.n + ' mengajukan pindah tugas', $('#pa').value);
+  L('y', m.n + ' mengajukan pindah tempat', $('#pa').value);
   save(); draw();
   toast('Pengajuan dikirim ke admin');
 };
@@ -169,7 +169,6 @@ P.dosen = {
       return true;
     });
 
-    // Beri label kategori pada dropdown pilihan jenis berkas saat unggah
     const J = [...new Set([...D.sy.s, ...D.sy.j].map(x => x.j).filter(Boolean))];
     const optJenis = J.map(j => {
       const inf = infoKategoriBerkas(j);
@@ -233,10 +232,10 @@ P.dosen = {
 
   pindah: () => {
     const has = D.rq.find(r => r.d == me().id);
-    return ['Dosen pindah atau keluar', 'Pindah Tugas',
+    return ['Dosen pindah atau keluar', 'Pindah Tempat',
       c('', has
         ? `<p>${bd('Menunggu admin')} Pengajuan "${has.a}" dikirim ${has.tg}.</p><p class="note">Admin BAAD akan memverifikasi, menonaktifkan akun, dan mengeluarkan data dari database.</p>`
-        : `<p class="note" style="margin:0">Ajukan jika Anda pindah tugas. Admin BAAD akan memverifikasi permintaan ini.</p>${sl('Alasan', 'pa', ['Pindah tugas ke instansi lain', 'Mengundurkan diri', 'Pensiun'])}${fi('Instansi tujuan', 'pi', 'Nama instansi')}${fi('Tanggal efektif', 'pt', '', 'date')}<button class="btn" style="margin-top:14px" onclick="pj()">Ajukan ke Admin</button>`,
+        : `<p class="note" style="margin:0">Ajukan jika Anda pindah tempat. Admin BAAD akan memverifikasi permintaan ini.</p>${sl('Alasan', 'pa', ['Pindah tempat ke instansi lain', 'Mengundurkan diri', 'Pensiun'])}${fi('Instansi tujuan', 'pi', 'Nama instansi')}${fi('Tanggal efektif', 'pt', '', 'date')}<button class="btn" style="margin-top:14px" onclick="pj()">Ajukan ke Admin</button>`,
         '" style="max-width:560px')
     ];
   },
