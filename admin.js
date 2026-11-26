@@ -123,7 +123,9 @@ const getBlobUrl = v => {
   if (!v || !v.url) return '';
   if (_blobCache[v.id]) return _blobCache[v.id];
   try {
-    const [hdr, b64] = v.url.split(',');
+    const parts = v.url.split(',');
+    const hdr = parts[0];
+    const b64 = parts[1];
     const mime = (hdr.match(/:(.*?);/) || [])[1] || 'application/octet-stream';
     const bin = atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -167,25 +169,109 @@ const dlToDosenFolder = async id => {
       await writable.write(blob);
       await writable.close();
 
-      toast(`Folder "${namaDosen}" (${statusFolder}) · Berkas tersimpan!`);
+      toast('Folder "' + namaDosen + '" (' + statusFolder + ') · Berkas tersimpan!');
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
     }
   }
 
-  // Fallback jika browser tidak mendukung pemilihan folder langsung
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${namaDosen} - ${namaFile}`; document.body.appendChild(a); a.click(); a.remove(); toast(`Mengunduh ${namaDosen} - ${namaFile}`); };  // --- Renderer PDF & Gambar Fit-to-Page dengan Zoom In / Zoom Out / Reset Fit --- const _pdfState = {}; const _imgZoom  = {};  const renderPdfFitPage = async (id, pageNum = null, zoomDelta = null) => { const v = D.ber.find(x => x.id == id); const wrap = $(`#pdf-box-${id}`);
-  const cvs  = $(`#pdf-cvs-${id}`); if (!v \vert{}\vert{} !wrap \vert{}\vert{} !cvs \vert{}\vert{} !window.pdfjsLib) return;  try { if (!_pdfState[id]) { const b64 = v.url.split(',')[1]; const bin = atob(b64); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); const pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise; _pdfState[id] = { doc: pdfDoc, page: 1, zoom: 1 }; }  const st = _pdfState[id]; if (pageNum !== null) st.page = Math.max(1, Math.min(pageNum, st.doc.numPages)); if (zoomDelta === 0) st.zoom = 1; else if (zoomDelta !== null) st.zoom = Math.max(0.5, Math.min(3, +(st.zoom + zoomDelta).toFixed(2)));  const page = await st.doc.getPage(st.page); const unscaledViewport = page.getViewport({ scale: 1 });  // Skala dasar Fit-to-Page dikalikan faktor zoom pengguna const boxWidth  = Math.max(260, wrap.clientWidth - 24); const maxHeight = 520; const baseScale = Math.min(boxWidth / unscaledViewport.width, maxHeight / unscaledViewport.height); const scale     = baseScale * st.zoom;  const dpr = window.devicePixelRatio \vert{}\vert{} 1; const viewport = page.getViewport({ scale: scale * dpr });  cvs.width  = Math.floor(viewport.width); cvs.height = Math.floor(viewport.height); cvs.style.width  = Math.floor(viewport.width / dpr) + 'px'; cvs.style.height = Math.floor(viewport.height / dpr) + 'px';  const ctx = cvs.getContext('2d'); await page.render({ canvasContext: ctx, viewport }).promise;  const infoEl = $(`#pdf-pg-${id}`);
-    if (infoEl) infoEl.textContent = `Hal ${st.page} /${st.doc.numPages}`;
-    const zmEl = $(`#pdf-zm-${id}`); if (zmEl) zmEl.textContent = `${Math.round(st.zoom * 100)}%`;
+  a.download = namaDosen + ' - ' + namaFile;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('Mengunduh ' + namaDosen + ' - ' + namaFile);
+};
+
+// --- Renderer PDF & Gambar Fit-to-Page dengan Zoom In / Zoom Out / Reset Fit ---
+const _pdfState = {};
+const _imgZoom  = {};
+
+const renderPdfFitPage = async (id, pageNum, zoomDelta) => {
+  const v = D.ber.find(x => x.id == id);
+  const wrap = $('#pdf-box-' + id);
+  const cvs  = $('#pdf-cvs-' + id);
+  if (!v || !wrap || !cvs || !window.pdfjsLib) return;
+
+  try {
+    if (!_pdfState[id]) {
+      const b64 = v.url.split(',')[1];
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+      _pdfState[id] = { doc: pdfDoc, page: 1, zoom: 1 };
+    }
+
+    const st = _pdfState[id];
+    if (pageNum !== null && pageNum !== undefined) {
+      st.page = Math.max(1, Math.min(pageNum, st.doc.numPages));
+    }
+    if (zoomDelta === 0) {
+      st.zoom = 1;
+    } else if (zoomDelta !== null && zoomDelta !== undefined) {
+      st.zoom = Math.max(0.5, Math.min(3, +(st.zoom + zoomDelta).toFixed(2)));
+    }
+
+    const page = await st.doc.getPage(st.page);
+    const unscaledViewport = page.getViewport({ scale: 1 });
+
+    const boxWidth  = Math.max(260, wrap.clientWidth - 24);
+    const maxHeight = 520;
+    const baseScale = Math.min(boxWidth / unscaledViewport.width, maxHeight / unscaledViewport.height);
+    const scale     = baseScale * st.zoom;
+
+    const dpr = window.devicePixelRatio || 1;
+    const viewport = page.getViewport({ scale: scale * dpr });
+
+    cvs.width  = Math.floor(viewport.width);
+    cvs.height = Math.floor(viewport.height);
+    cvs.style.width  = Math.floor(viewport.width / dpr) + 'px';
+    cvs.style.height = Math.floor(viewport.height / dpr) + 'px';
+
+    const ctx = cvs.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+    const infoEl = $('#pdf-pg-' + id);
+    if (infoEl) infoEl.textContent = 'Hal ' + st.page + ' / ' + st.doc.numPages;
+    const zmEl = $('#pdf-zm-' + id);
+    if (zmEl) zmEl.textContent = Math.round(st.zoom * 100) + '%';
   } catch (err) {
-    wrap.innerHTML = `<iframe src="${getBlobUrl(v)}#toolbar=0&navpanes=0&view=Fit" style="display:block;width:100\%;height:500px;border:0;background:#fff"></iframe>`; } };  const navPdfPage = (id, delta) => renderPdfFitPage(id, (_pdfState[id]?.page \vert{}\vert{} 1) + delta, null); const zoomPdf    = (id, delta) => renderPdfFitPage(id, null, delta);  const zoomImg = (id, delta) => { const img = $(`#img-prv-${id}`);
-  const lbl = $(`#img-zm-${id}`); if (!img) return; const cur = _imgZoom[id] \vert{}\vert{} 1; const nxt = delta === 0 ? 1 : Math.max(0.5, Math.min(3, +(cur + delta).toFixed(2))); _imgZoom[id] = nxt; img.style.width = `${Math.round(nxt * 100)}%`;
+    wrap.innerHTML = '<iframe src="' + getBlobUrl(v) + '#toolbar=0&navpanes=0&view=Fit" style="display:block;width:100%;height:500px;border:0;background:#fff"></iframe>';
+  }
+};
+
+const navPdfPage = (id, delta) => {
+  const cur = _pdfState[id] ? _pdfState[id].page : 1;
+  renderPdfFitPage(id, cur + delta, null);
+};
+
+const zoomPdf = (id, delta) => {
+  renderPdfFitPage(id, null, delta);
+};
+
+const zoomImg = (id, delta) => {
+  const img = $('#img-prv-' + id);
+  const lbl = $('#img-zm-' + id);
+  if (!img) return;
+  const cur = _imgZoom[id] || 1;
+  const nxt = delta === 0 ? 1 : Math.max(0.5, Math.min(3, +(cur + delta).toFixed(2)));
+  _imgZoom[id] = nxt;
+  img.style.width = Math.round(nxt * 100) + '%';
   img.style.maxHeight = nxt === 1 ? '500px' : 'none';
-  if (lbl) lbl.textContent = `${Math.round(nxt * 100)}\%`; };  // --- Pratinjau Dokumen Asli (Fit to Page + Zoom In/Out & Rapi) --- const openDoc = id => { const b = D.ber.find(x => x.id == id); if (!b \vert{}\vert{} !b.url) return toast('Berkas demo bawaan tidak memiliki file fisik'); const blobUrl = getBlobUrl(b); const win = window.open(); if (win) { win.document.write(`<title>${b.f}</title><body style="margin:0;background:#18181b"><iframe src="${blobUrl}#view=Fit&navpanes=0" style="border:0;width:100vw;height:100vh"></iframe></body>`);
+  if (lbl) lbl.textContent = Math.round(nxt * 100) + '%';
+};
+
+// --- Pratinjau Dokumen Asli (Fit to Page + Zoom In/Out & Rapi) ---
+const openDoc = id => {
+  const b = D.ber.find(x => x.id == id);
+  if (!b || !b.url) return toast('Berkas demo bawaan tidak memiliki file fisik');
+  const blobUrl = getBlobUrl(b);
+  const win = window.open();
+  if (win) {
+    win.document.write('<title>' + b.f + '</title><body style="margin:0;background:#18181b"><iframe src="' + blobUrl + '#view=Fit&navpanes=0" style="border:0;width:100vw;height:100vh"></iframe></body>');
   }
 };
 
@@ -207,68 +293,45 @@ const renderPreview = v => {
     _imgZoom[v.id] = 1;
   }
 
+  const viewerHtml = isImg
+    ? `<div style="background:#1f1f23">
+         <div style="max-height:520px;overflow:auto;padding:12px;display:grid;place-items:center">
+           <img id="img-prv-${v.id}" src="${blobUrl}" alt="${v.f}" style="display:block;width:100%;max-height:500px;height:auto;border-radius:8px;padding:0;background:transparent;object-fit:contain;transition:width 0.15s ease">
+         </div>
+         <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px;background:#18181b;border-top:1px solid rgba(255,255,255,0.06)">
+           <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perkecil (Zoom Out)" onclick="zoomImg(${v.id},-0.25)">−</button>
+           <small id="img-zm-${v.id}" style="color:#e4e4e7;font-size:12px;font-weight:700;min-width:44px;text-align:center">100%</small>
+           <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perbesar (Zoom In)" onclick="zoomImg(${v.id},0.25)">+</button>
+           <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:11.5px" title="Sesuaikan Halaman" onclick="zoomImg(${v.id},0)">Fit</button>
+         </div>
+       </div>`
+    : isPdf
+      ? `<div style="background:#27272a">
+           <div id="pdf-box-${v.id}" style="max-height:540px;overflow:auto;padding:12px;display:grid;place-items:center;min-height:360px">
+             <canvas id="pdf-cvs-${v.id}" style="display:block;background:#fff;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></canvas>
+           </div>
+           <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:8px 10px;background:#18181b;border-top:1px solid rgba(255,255,255,0.06)">
+             <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:12px" onclick="navPdfPage(${v.id},-1)">‹</button>
+             <small id="pdf-pg-${v.id}" style="color:#e4e4e7;font-size:12px;font-weight:600">Memuat…</small>
+             <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:12px" onclick="navPdfPage(${v.id},1)">›</button>
+             <span style="width:1px;height:18px;background:rgba(255,255,255,0.18);margin:0 2px"></span>
+             <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perkecil (Zoom Out)" onclick="zoomPdf(${v.id},-0.25)">−</button>
+             <small id="pdf-zm-${v.id}" style="color:#e4e4e7;font-size:12px;font-weight:700;min-width:44px;text-align:center">100%</small>
+             <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perbesar (Zoom In)" onclick="zoomPdf(${v.id},0.25)">+</button>
+             <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:11.5px" title="Sesuaikan Halaman" onclick="zoomPdf(${v.id},0)">Fit</button>
+           </div>
+         </div>`
+      : `<div style="padding:28px 16px;text-align:center;color:#fff"><b>${v.f}</b><p class="note">Pratinjau langsung tersedia untuk PDF dan gambar. Klik tombol di bawah untuk mengunduh ke folder dosen.</p></div>`;
+
+  const fullscreenBtn = (isImg || isPdf)
+    ? `<button type="button" class="btn w" style="margin:0;padding:8px 12px;font-size:12px" onclick="openDoc(${v.id})">Buka Layar Penuh</button>`
+    : '';
+
   return `
     <div style="border:1.5px solid var(--b);border-radius:12px;overflow:hidden;background:#1f1f23;width:100%">
-      ${isImg
-        ? `<div style="background:#1f1f23">
-             <div style="max-height:520px;overflow:auto;padding:12px;display:grid;place-items:center">
-               <img id="img-prv-${v.id}" src="${blobUrl}" alt="${v.f}" style="display:block;width:100%;max-height:500px;height:auto;border-radius:8px;padding:0;background:transparent;object-fit:contain;transition:width 0.15s ease">
-             </div>
-             <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px;background:#18181b;border-top:1px solid rgba(255,255,255,0.06)">
-               <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perkecil (Zoom Out)" onclick="zoomImg(${v.id},-0.25)">−</button>
-               <small id="img-zm-${v.id}" style="color:#e4e4e7;font-size:12px;font-weight:700;min-width:44px;text-align:center">100%</small>
-               <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perbesar (Zoom In)" onclick="zoomImg(${v.id},0.25)">+</button>
-               <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:11.5px" title="Sesuaikan Halaman" onclick="zoomImg(${v.id},0)">Fit</button>
-             </div>
-           </div>`
-        : isPdf
-          ? `<div style="background:#27272a">
-               <div id="pdf-box-${v.id}" style="max-height:540px;overflow:auto;padding:12px;display:grid;place-items:center;min-height:360px">
-                 <canvas id="pdf-cvs-${v.id}" style="display:block;background:#fff;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></canvas>
-               </div>
-               <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:8px 10px;background:#18181b;border-top:1px solid rgba(255,255,255,0.06)">
-                 <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:12px" onclick="navPdfPage(${v.id},-1)">‹</button>
-                 <small id="pdf-pg-${v.id}" style="color:#e4e4e7;font-size:12px;font-weight:600">Memuat…</small>
-                 <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:12px" onclick="navPdfPage(${v.id},1)">›</button>
-                 <span style="width:1px;height:18px;background:rgba(255,255,255,0.18);margin:0 2px"></span>
-                 <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perkecil (Zoom Out)" onclick="zoomPdf(${v.id},-0.25)">−</button>
-                 <small id="pdf-zm-${v.id}" style="color:#e4e4e7;font-size:12px;font-weight:700;min-width:44px;text-align:center">100%</small>
-                 <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:13px" title="Perbesar (Zoom In)" onclick="zoomPdf(${v.id},0.25)">+</button>
-                 <button type="button" class="btn w" style="margin:0;padding:4px 10px;font-size:11.5px" title="Sesuaikan Halaman" onclick="zoomPdf(${v.id},0)">Fit</button>
-               </div>
-             </div>`
-          : `<div style="padding:28px 16px;text-align:center;color:#fff"><b>${v.f}</b><p class="note">Pratinjau langsung tersedia untuk PDF dan gambar. Klik tombol di bawah untuk mengunduh ke folder dosen.</p></div>`
-      }
+      ${viewerHtml}
       <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#141416;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08)">
         <small style="color:#d4d4d8;font-size:11.5px">Folder: <b>${dn(v.d)}</b></small>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${(isImg || isPdf) ? `<button type="button" class="btn w" style="margin:0;padding:8px 12px;font-size:12px" onclick="openDoc(${v.id})">Buka Layar Penuh</button>` : ''}
-          <button type="button" class="btn" style="margin:0;padding:8px 14px;font-size:12px" onclick="dlToDosenFolder(${v.id})">Unduh ke Folder Dosen</button>
-        </div>
-      </div>
-    </div>`;
-};
-
-// --- Ekspor Excel (.xls) ---
-const ex = () => {
-  const tgl = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const rows = D.dos.map((d, i) => {
-    const s = es(d.id, 's');
-    const j = es(d.id, 'j');
-    const p = pct(d.id);
-    const bgS = s == 'Eligible' ? '#D1FAE5;color:#065F46' : '#FEF3C7;color:#92400E';
-    const bgJ = j == 'Eligible' ? '#D1FAE5;color:#065F46' : '#FEF3C7;color:#92400E';
-    return `<tr style="background:${i % 2 ? '#FFFDF5' : '#FFFFFF'}">
-      <td style="text-align:center">${i + 1}</td>
-      <td>${d.n}</td>
-      <td style="text-align:center">'${d.id}</td>
-      <td>${d.pr}</td>
-      <td>${d.jab}</td>
-      <td style="text-align:center;font-weight:bold;background:${bgS}">${s} (${pr(d.id, 's')}/${D.sy.s.length})</td>
-      <td style="text-align:center;font-weight:bold;background:${bgJ}">${j} (${pr(d.id, 'j')}/${D.sy.j.length})</td>
-      <td style="text-align:center;font-weight:bold">${p}%</td>
-    </tr>`;
-  }).join('');
-
-  const html = `<html><head><meta charset="utf-8"><style>
-    table{border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt}
+          ${fullscreenBtn}
+          <button type="button" class="btn" style="margin:0;padding:8px
